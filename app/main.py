@@ -69,6 +69,14 @@ class DatabaseManager:
     async def start(self) -> None:
         self._task = asyncio.create_task(self._maintain(), name="db-maintainer")
 
+    async def _init_connection(self, conn: asyncpg.Connection) -> None:
+        await conn.set_type_codec(
+            "jsonb",
+            schema="pg_catalog",
+            encoder=json.dumps,
+            decoder=json.loads,
+        )
+
     async def _open_pool(self) -> None:
         if not self.url or self.pool is not None:
             return
@@ -82,6 +90,7 @@ class DatabaseManager:
                     max_size=self.pool_max,
                     command_timeout=3,
                     max_inactive_connection_lifetime=300,
+                    init=self._init_connection,
                 ),
                 timeout=self.connect_timeout,
             )
@@ -193,7 +202,11 @@ async def request_context(request: Request, call_next):
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.exception("unhandled_request_exception", extra={"event": "request_exception"})
+    logger.error(
+        "unhandled_request_exception",
+        exc_info=(type(exc), exc, exc.__traceback__),
+        extra={"event": "request_exception"},
+    )
     return JSONResponse(status_code=500, content={"error": "internal_server_error"})
 
 
@@ -356,8 +369,13 @@ async def opponent_report(body: OpponentReportRequest, request: Request):
     """
     async with pool.acquire() as conn:
         rows = [dict(r) for r in await conn.fetch(sql, *values)]
+
     total_n = sum(r["n"] for r in rows)
+    for row in rows:
+        row["sample_flag"] = "ok" if row["n"] >= body.min_n else "low_n"
+    qualified = [row for row in rows if row["sample_flag"] == "ok"]
     sample_status = "insufficient" if total_n < body.min_n else ("directional" if total_n < 20 else "usable")
+
     return {
         "opponent": body.opponent,
         "filters": {
@@ -367,10 +385,11 @@ async def opponent_report(body: OpponentReportRequest, request: Request):
         },
         "sample_n": total_n,
         "min_n": body.min_n,
-        "flagged": total_n >= body.min_n,
+        "flagged": bool(qualified),
+        "qualified_tendency_count": len(qualified),
         "sample_status": sample_status,
         "tendencies": rows,
-        "warning": None if total_n >= body.min_n else "Do not game-plan from this split yet; sample is below the n-guard.",
+        "warning": None if qualified else "No play-family tendency clears the n-guard; treat these rows as questions, not game-plan facts.",
     }
 
 
@@ -408,7 +427,7 @@ async def player_card(player_id: uuid.UUID, request: Request):
             raise HTTPException(status_code=404, detail="player_not_found")
         traits = await conn.fetch(
             """
-            SELECT trait, score, sample_n, evidence_count, confidence, as_of
+            SELECT trait, score, sample_n, evidence_count, confidence, as_of, evidence
             FROM cognition_trait_scores
             WHERE player_id=$1
             ORDER BY trait
@@ -462,16 +481,23 @@ async def weekly_call_sheet(opponent: str, request: Request, min_n: int = Query(
             """,
             opponent,
         )
+
     tendencies = [dict(r) for r in rows]
+    for row in tendencies:
+        row["sample_flag"] = "ok" if row["n"] >= min_n else "low_n"
+
+    candidate_rules = [dict(r) for r in avoid]
+    for rule in candidate_rules:
+        rule["sample_flag"] = "ok" if rule["sample_n"] >= min_n else "low_n"
+    actionable_rules = [rule for rule in candidate_rules if rule["sample_flag"] == "ok"]
+
     return {
         "opponent": opponent,
         "one_page": True,
-        "tendencies": [
-            {**r, "sample_flag": "ok" if r["n"] >= min_n else "low_n"}
-            for r in tendencies
-        ],
-        "do_not_call": [dict(r) for r in avoid],
-        "decision_rule": "No tendency becomes a call-sheet flag below the minimum sample guard.",
+        "tendencies": tendencies,
+        "do_not_call": actionable_rules,
+        "candidate_rules": candidate_rules,
+        "decision_rule": "No tendency or call rule becomes actionable below the minimum sample guard.",
     }
 
 
