@@ -15,4 +15,34 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements.txt
-      - run: pytest -q
+      - name: Compile Python entrypoints
+        run: python -m py_compile app/main.py scripts/seed.py
+      - name: Run API contract tests
+        run: python -m pytest -q
+      - name: Build production Docker image
+        run: docker build -t fieldmind-ci .
+      - name: Smoke production container
+        run: |
+          docker run -d --name fieldmind-ci -p 8000:8000 -e PORT=8000 fieldmind-ci
+          health_ok=0
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/health > /tmp/health.json; then
+              health_ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$health_ok" -ne 1 ]; then
+            docker logs fieldmind-ci
+            exit 1
+          fi
+          grep -q '"status":"ok"' /tmp/health.json
+          ready_code=$(curl -sS -o /tmp/ready.json -w '%{http_code}' http://127.0.0.1:8000/ready)
+          test "$ready_code" = "503"
+          grep -q '"status":"not_ready"' /tmp/ready.json
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs fieldmind-ci || true
+      - name: Remove smoke container
+        if: always()
+        run: docker rm -f fieldmind-ci || true
