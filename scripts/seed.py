@@ -1,13 +1,19 @@
 import asyncio
 import json
 import os
+from datetime import date
 from pathlib import Path
+from uuid import UUID
 
 import asyncpg
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "db" / "schema.sql"
 SEED_PATH = ROOT / "data" / "seed_plays.json"
+
+
+def as_uuid(value: str | None) -> UUID | None:
+    return UUID(value) if value else None
 
 
 async def main() -> None:
@@ -29,7 +35,7 @@ async def main() -> None:
                     VALUES ($1,$2,$3)
                     ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, level=EXCLUDED.level
                     """,
-                    row["id"], row["name"], row["level"],
+                    as_uuid(row["id"]), row["name"], row["level"],
                 )
 
             for row in seed["teams"]:
@@ -39,7 +45,7 @@ async def main() -> None:
                     VALUES ($1,$2,$3,$4)
                     ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, season=EXCLUDED.season
                     """,
-                    row["id"], row["program_id"], row["name"], row["season"],
+                    as_uuid(row["id"]), as_uuid(row["program_id"]), row["name"], row["season"],
                 )
 
             for row in seed["players"]:
@@ -54,7 +60,8 @@ async def main() -> None:
                         class_year=EXCLUDED.class_year,
                         jersey=EXCLUDED.jersey
                     """,
-                    row["id"], row["team_id"], row["name"], row["position"], row.get("class_year"), row.get("jersey"),
+                    as_uuid(row["id"]), as_uuid(row["team_id"]), row["name"], row["position"],
+                    row.get("class_year"), row.get("jersey"),
                 )
 
             for row in seed["games"]:
@@ -70,19 +77,12 @@ async def main() -> None:
                         away_team_id=EXCLUDED.away_team_id,
                         venue=EXCLUDED.venue
                     """,
-                    row["id"], row["season"], row.get("week"), row.get("game_date"),
-                    row.get("home_team_id"), row.get("away_team_id"), row.get("venue"),
+                    as_uuid(row["id"]), row["season"], row.get("week"),
+                    date.fromisoformat(row["game_date"]) if row.get("game_date") else None,
+                    as_uuid(row.get("home_team_id")), as_uuid(row.get("away_team_id")), row.get("venue"),
                 )
 
-            play_columns = [
-                "id","game_id","play_sequence","quarter","clock","down","distance","yard_line",
-                "distance_bucket","field_zone","score_diff","offense_team_id","defense_team_id",
-                "offense_team_name","defense_team_name","personnel_offense","formation","motion",
-                "play_family","concept","coverage","pressure","result_yards","epa","success",
-                "explosive","turnover","qb_player_id"
-            ]
             for row in seed["plays"]:
-                values = [row.get(c) for c in play_columns]
                 await conn.execute(
                     """
                     INSERT INTO plays (
@@ -104,6 +104,10 @@ async def main() -> None:
                         distance_bucket=EXCLUDED.distance_bucket,
                         field_zone=EXCLUDED.field_zone,
                         score_diff=EXCLUDED.score_diff,
+                        offense_team_id=EXCLUDED.offense_team_id,
+                        defense_team_id=EXCLUDED.defense_team_id,
+                        offense_team_name=EXCLUDED.offense_team_name,
+                        defense_team_name=EXCLUDED.defense_team_name,
                         personnel_offense=EXCLUDED.personnel_offense,
                         formation=EXCLUDED.formation,
                         motion=EXCLUDED.motion,
@@ -116,18 +120,47 @@ async def main() -> None:
                         success=EXCLUDED.success,
                         explosive=EXCLUDED.explosive,
                         turnover=EXCLUDED.turnover,
+                        qb_player_id=EXCLUDED.qb_player_id,
                         cognition_events=EXCLUDED.cognition_events,
                         tags=EXCLUDED.tags
                     """,
-                    *values,
+                    as_uuid(row["id"]),
+                    as_uuid(row["game_id"]),
+                    row["play_sequence"],
+                    row["quarter"],
+                    row["clock"],
+                    row["down"],
+                    row["distance"],
+                    row["yard_line"],
+                    row["distance_bucket"],
+                    row["field_zone"],
+                    row.get("score_diff", 0),
+                    as_uuid(row.get("offense_team_id")),
+                    as_uuid(row.get("defense_team_id")),
+                    row["offense_team_name"],
+                    row["defense_team_name"],
+                    row["personnel_offense"],
+                    row["formation"],
+                    row.get("motion"),
+                    row["play_family"],
+                    row.get("concept"),
+                    row.get("coverage"),
+                    row.get("pressure"),
+                    row.get("result_yards", 0),
+                    row.get("epa"),
+                    row.get("success", False),
+                    row.get("explosive", False),
+                    row.get("turnover", False),
+                    as_uuid(row.get("qb_player_id")),
                     json.dumps(row.get("cognition_events", {})),
                     row.get("tags", []),
                 )
 
             for row in seed["cognition_trait_scores"]:
+                player_id = as_uuid(row["player_id"])
                 await conn.execute(
                     "DELETE FROM cognition_trait_scores WHERE player_id=$1 AND trait=$2",
-                    row["player_id"], row["trait"],
+                    player_id, row["trait"],
                 )
                 await conn.execute(
                     """
@@ -135,8 +168,8 @@ async def main() -> None:
                     (player_id,position,trait,score,sample_n,evidence_count,confidence,evidence)
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
                     """,
-                    row["player_id"], row["position"], row["trait"], row["score"],
-                    row["sample_n"], row["evidence_count"], row["confidence"], json.dumps(row["evidence"]),
+                    player_id, row["position"], row["trait"], row["score"], row["sample_n"],
+                    row["evidence_count"], row["confidence"], json.dumps(row["evidence"]),
                 )
 
             await conn.execute("DELETE FROM call_rules WHERE opponent_name='Metro State Panthers'")
