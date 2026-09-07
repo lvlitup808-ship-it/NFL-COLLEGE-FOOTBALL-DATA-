@@ -2,12 +2,27 @@ name: ci
 
 on:
   push:
-    branches: [main, fieldmind-v1-foundation]
+    branches: [main]
   pull_request:
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: fieldmind
+          POSTGRES_DB: fieldmind
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fieldmind"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:fieldmind@127.0.0.1:5432/fieldmind
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -16,9 +31,15 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Compile Python entrypoints
-        run: python -m py_compile app/main.py scripts/seed.py
-      - name: Run API contract tests
+        run: python -m py_compile app/main.py app/ingest/nflverse.py scripts/seed.py scripts/migrate.py scripts/ingest_nflverse.py scripts/benchmark.py
+      - name: Run API and adapter tests
         run: python -m pytest -q
+      - name: Apply database migrations
+        run: python scripts/migrate.py
+      - name: Seed demo database
+        run: python scripts/seed.py
+      - name: Run V1 query benchmark gate
+        run: python scripts/benchmark.py --iterations 3 --warmup 1
       - name: Build production Docker image
         run: docker build -t fieldmind-ci .
       - name: Smoke production container
