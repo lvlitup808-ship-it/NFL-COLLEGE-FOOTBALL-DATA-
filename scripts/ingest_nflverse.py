@@ -2,11 +2,17 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 from datetime import date
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid5
 
 import asyncpg
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from app.ingest.nflverse import SOURCE, canonicalize_row, csv_rows, source_url
 
