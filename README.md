@@ -15,6 +15,16 @@ FIELDMIND is a football decision system built around one atomic unit: the play. 
 - Structured JSON logging, bounded Postgres pool, reconnect backoff, graceful shutdown
 - 20-play fictional seed game
 
+## V1.1 production-data layer
+
+- Checksum-protected, advisory-locked Postgres migrations
+- Source provenance on games and plays
+- Streaming nflverse NFL play-by-play adapter; seasons are never materialized fully in RAM
+- Idempotent deterministic IDs for safe reruns
+- Ingest-run audit records with inserted/updated/skipped/error counts
+- V1 query benchmark harness with the product latency thresholds
+- CI Postgres integration gate covering migration, seed, benchmark, Docker build and health smoke tests
+
 ## Stack
 
 - FastAPI / Python 3.12
@@ -50,14 +60,65 @@ curl -i http://127.0.0.1:8000/ready
 
 Without `DATABASE_URL`, HTTP 503 is correct. With a working database, readiness returns 200.
 
-## Database seed
+## Database lifecycle
+
+Set the database connection once:
 
 ```bash
 export DATABASE_URL='postgresql://...'
+```
+
+Apply schema changes before ingesting data:
+
+```bash
+python scripts/migrate.py
+```
+
+The migrator uses a Postgres advisory lock so two deploy processes cannot apply migrations concurrently. Applied SQL files are checksum-protected; never edit an applied migration. Add a new migration instead.
+
+Load the fictional 20-play development game:
+
+```bash
 python scripts/seed.py
 ```
 
-The seed creates the V1 schema and loads the fictional 20-play demo game in `data/seed_plays.json`.
+## Real NFL data ingest
+
+FIELDMIND can stream the public nflverse play-by-play CSV release directly into Postgres:
+
+```bash
+python scripts/ingest_nflverse.py --season 2025
+```
+
+Use a bounded test ingest first:
+
+```bash
+python scripts/ingest_nflverse.py --season 2025 --max-rows 5000
+```
+
+Or normalize a local CSV fixture:
+
+```bash
+python scripts/ingest_nflverse.py --season 2025 --url ./play_by_play_2025.csv
+```
+
+The adapter only maps evidence present in play-by-play. Coverage, motion, route concepts and other film-only facts are not inferred when the source does not support them. nflverse play-by-play is maintained by the nflverse project and distributed under its stated licensing terms; preserve attribution when using their data.
+
+## Performance gate
+
+Run the same decision-query thresholds used by the product requirements:
+
+```bash
+python scripts/benchmark.py --iterations 25 --warmup 3
+```
+
+The benchmark records p50, p95 and max latency in `benchmark_runs` and exits non-zero if the p95 threshold fails:
+
+- Play Finder, 20 plays: `< 2000 ms`
+- Opponent report: `< 5000 ms`
+- Self-scout: `< 5000 ms`
+
+Run this after each production season ingest and after index/query changes.
 
 ## Primary API paths
 
@@ -87,11 +148,14 @@ If Railway requires an explicit Docker start override:
 /bin/sh -c "exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 5"
 ```
 
+Run `python scripts/migrate.py` as an explicit deploy/one-off operation. Do not put season ingestion in the web-service startup command. Startup must remain fast and independent of data imports.
+
 `railway.json` is included because it was part of the requested deployment pack. Railway deprecated Config-as-Code in 2026, so new services should mirror those settings in current Railway Infrastructure-as-Code/service settings rather than depend on `railway.json` long-term.
 
-## Product and operating spec
+## Product and operating specs
 
-See `docs/PRODUCT_SPEC.md` for the architecture, cognition graph, week-of-game workflow, API contract, example outputs, 12-week plan, competitive kill-sheet, failure risks, and Railway prevention runbook.
+- `docs/PRODUCT_SPEC.md`: architecture, cognition graph, week-of-game workflow, API contract, examples, 12-week plan, competitive kill-sheet, risks and Railway runbook.
+- `docs/PRODUCTION_DATA.md`: production database, ingest, provenance, benchmark and rollback procedure.
 
 ## Non-negotiable cognition guardrails
 
