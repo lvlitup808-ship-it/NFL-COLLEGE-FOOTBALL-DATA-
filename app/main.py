@@ -13,6 +13,8 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.lieutenant import router as lieutenant_router
+
 SERVICE_NAME = "fieldmind-api"
 STARTED_AT = time.monotonic()
 
@@ -173,10 +175,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="FIELDMIND API",
-    version="0.1.0",
-    description="Play intelligence, opponent tendency, self-scout, cognition evidence, and QB translation V1.",
+    version="1.5.0",
+    description="Play intelligence, movement evidence, cognition, radar, combine queries, and evidence-bound Lieutenant evaluation.",
     lifespan=lifespan,
 )
+app.include_router(lieutenant_router)
 
 
 @app.middleware("http")

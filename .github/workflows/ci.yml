@@ -33,15 +33,26 @@ jobs:
       - name: Compile Python entrypoints
         run: >-
           python -m py_compile
-          app/main.py app/ingest/nflverse.py app/ingest/cfbd.py
+          app/main.py app/lieutenant.py app/ingest/nflverse.py app/ingest/cfbd.py
           scripts/seed.py scripts/migrate.py scripts/ingest_nflverse.py
-          scripts/ingest_cfbd.py scripts/benchmark.py scripts/data_quality.py
-      - name: Run API and adapter tests
-        run: python -m pytest -q
+          scripts/ingest_cfbd.py scripts/ingest_movement.py scripts/benchmark.py scripts/data_quality.py
       - name: Apply database migrations
         run: python scripts/migrate.py
       - name: Seed demo database
         run: python scripts/seed.py
+      - name: Exercise idempotent movement ingest
+        run: |
+          python scripts/ingest_movement.py
+          second=$(python scripts/ingest_movement.py)
+          echo "$second"
+          echo "$second" | grep -q '"ingested":10'
+          echo "$second" | grep -q '"skipped":0'
+          echo "$second" | grep -q '"errors":0'
+          echo "$second" | grep -q '"stored":10'
+      - name: Run API, lieutenant, and adapter tests
+        env:
+          RUN_DB_CONTRACT: '1'
+        run: python -m pytest -q
       - name: Exercise idempotent nflverse ingest
         run: |
           python scripts/ingest_nflverse.py --season 2025 --url tests/fixtures/nflverse_sample.csv
