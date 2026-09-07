@@ -1,0 +1,102 @@
+[
+  {
+    "player_id": "30000000-0000-0000-0000-000000000002",
+    "play_id": "50000000-0000-0000-0000-000000000001",
+    "max_speed_mph": 20.8,
+    "accel": 4.1,
+    "cod": 7.3,
+    "sep_yards": 2.4,
+    "getoff_ms": 610,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000002",
+    "play_id": "50000000-0000-0000-0000-000000000002",
+    "max_speed_mph": 21.1,
+    "accel": 4.3,
+    "cod": 7.5,
+    "sep_yards": 2.8,
+    "getoff_ms": 590,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000002",
+    "play_id": "50000000-0000-0000-0000-000000000003",
+    "max_speed_mph": 21.7,
+    "accel": 4.5,
+    "cod": 7.6,
+    "sep_yards": 3.1,
+    "getoff_ms": 575,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000002",
+    "play_id": "50000000-0000-0000-0000-000000000004",
+    "max_speed_mph": 21.0,
+    "accel": 4.2,
+    "cod": 7.2,
+    "sep_yards": 2.2,
+    "getoff_ms": 605,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000002",
+    "play_id": "50000000-0000-0000-0000-000000000005",
+    "max_speed_mph": 21.4,
+    "accel": 4.4,
+    "cod": 7.4,
+    "sep_yards": 3.0,
+    "getoff_ms": 585,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000001",
+    "play_id": "50000000-0000-0000-0000-000000000011",
+    "max_speed_mph": 19.5,
+    "accel": 4.0,
+    "cod": 8.8,
+    "sep_yards": 2.1,
+    "getoff_ms": 630,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000001",
+    "play_id": "50000000-0000-0000-0000-000000000012",
+    "max_speed_mph": 19.8,
+    "accel": 4.1,
+    "cod": 9.0,
+    "sep_yards": 2.5,
+    "getoff_ms": 615,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000001",
+    "play_id": "50000000-0000-0000-0000-000000000013",
+    "max_speed_mph": 20.0,
+    "accel": 4.2,
+    "cod": 9.2,
+    "sep_yards": 2.7,
+    "getoff_ms": 600,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000001",
+    "play_id": "50000000-0000-0000-0000-000000000014",
+    "max_speed_mph": 19.7,
+    "accel": 4.0,
+    "cod": 8.9,
+    "sep_yards": 2.3,
+    "getoff_ms": 620,
+    "source": "skillcorner_like_fixture"
+  },
+  {
+    "player_id": "30000000-0000-0000-0000-000000000001",
+    "play_id": "50000000-0000-0000-0000-000000000015",
+    "max_speed_mph": 19.9,
+    "accel": 4.1,
+    "cod": 9.1,
+    "sep_yards": 2.6,
+    "getoff_ms": 610,
+    "source": "skillcorner_like_fixture"
+  }
+]
