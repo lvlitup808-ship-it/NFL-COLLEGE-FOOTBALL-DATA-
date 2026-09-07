@@ -31,7 +31,11 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Compile Python entrypoints
-        run: python -m py_compile app/main.py app/ingest/nflverse.py scripts/seed.py scripts/migrate.py scripts/ingest_nflverse.py scripts/benchmark.py
+        run: >-
+          python -m py_compile
+          app/main.py app/ingest/nflverse.py app/ingest/cfbd.py
+          scripts/seed.py scripts/migrate.py scripts/ingest_nflverse.py
+          scripts/ingest_cfbd.py scripts/benchmark.py scripts/data_quality.py
       - name: Run API and adapter tests
         run: python -m pytest -q
       - name: Apply database migrations
@@ -45,6 +49,15 @@ jobs:
           echo "$second"
           echo "$second" | grep -q '"rows_inserted":0'
           echo "$second" | grep -q '"rows_updated":3'
+      - name: Exercise idempotent CFBD college ingest
+        run: |
+          python scripts/ingest_cfbd.py --season 2025 --week 1 --fixture tests/fixtures/cfbd_sample.json
+          second=$(python scripts/ingest_cfbd.py --season 2025 --week 1 --fixture tests/fixtures/cfbd_sample.json)
+          echo "$second"
+          echo "$second" | grep -q '"rows_inserted":0'
+          echo "$second" | grep -q '"rows_updated":3'
+      - name: Run source data quality gate
+        run: python scripts/data_quality.py
       - name: Run V1 query benchmark gate
         run: python scripts/benchmark.py --iterations 3 --warmup 1
       - name: Build production Docker image
