@@ -33,7 +33,7 @@ jobs:
       - name: Compile Python entrypoints
         run: >-
           python -m py_compile
-          app/main.py app/pilot.py app/wedge.py app/ingest/nflverse.py app/ingest/cfbd.py
+          app/main.py app/pilot.py app/wedge.py app/wedge_extra.py app/ingest/nflverse.py app/ingest/cfbd.py
           scripts/seed.py scripts/migrate.py scripts/provision_pilot_user.py scripts/ingest_nflverse.py
           scripts/ingest_cfbd.py scripts/benchmark.py scripts/data_quality.py
       - name: Run API and adapter tests
