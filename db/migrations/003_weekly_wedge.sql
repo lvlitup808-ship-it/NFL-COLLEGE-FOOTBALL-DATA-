@@ -8,9 +8,38 @@ ALTER TABLE plays ADD COLUMN IF NOT EXISTS source_play_class TEXT;
 -- Preserve source-only pass/run classification without treating it as a football concept.
 UPDATE plays
 SET source_play_class = play_family,
-    play_family = 'UNKNOWN'
-WHERE external_source IN ('cfbd','nflverse')
-  AND play_family IN ('pass','run');
+    play_family = 'UNKNOWN',
+    personnel_offense = 'UNKNOWN',
+    formation = 'UNKNOWN',
+    motion = NULL,
+    concept = NULL,
+    coverage = NULL
+WHERE external_source IN ('cfbd','nflverse');
+
+-- Hard boundary: public PBP is source evidence only. Even if an adapter later adds a
+-- heuristic, these film-only fields stay UNKNOWN/null until a trusted program tag exists.
+CREATE OR REPLACE FUNCTION fieldmind_guard_source_pbp()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.external_source IN ('cfbd','nflverse') THEN
+        IF NEW.play_family IN ('pass','run') THEN
+            NEW.source_play_class := NEW.play_family;
+        END IF;
+        NEW.play_family := 'UNKNOWN';
+        NEW.personnel_offense := 'UNKNOWN';
+        NEW.formation := 'UNKNOWN';
+        NEW.motion := NULL;
+        NEW.concept := NULL;
+        NEW.coverage := NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_fieldmind_guard_source_pbp ON plays;
+CREATE TRIGGER trg_fieldmind_guard_source_pbp
+BEFORE INSERT OR UPDATE ON plays
+FOR EACH ROW EXECUTE FUNCTION fieldmind_guard_source_pbp();
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
