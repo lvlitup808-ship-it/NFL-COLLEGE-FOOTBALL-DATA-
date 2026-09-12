@@ -5,6 +5,9 @@ surfaces with authenticated, program-scoped pilot routes. Health/readiness stay
 unchanged and ingestion remains a one-off job.
 """
 import os
+from pathlib import Path
+
+from fastapi.responses import FileResponse
 
 from app.main import app
 from app.wedge import router as wedge_router
@@ -25,3 +28,10 @@ app.router.routes = [
 ]
 
 app.include_router(wedge_router)
+
+WEB_INDEX = Path(__file__).with_name("web") / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+async def pilot_ui():
+    return FileResponse(WEB_INDEX)
