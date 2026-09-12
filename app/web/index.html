@@ -5,173 +5,53 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FIELDMIND</title>
 <style>
-:root{font-family:Inter,system-ui,sans-serif;color:#111;background:#f6f6f3}
-*{box-sizing:border-box} body{margin:0} header{background:#111;color:#fff;padding:18px 22px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-header b{font-size:22px;letter-spacing:.06em} input,select,button,textarea{font:inherit;padding:9px;border:1px solid #bbb;border-radius:6px;background:white}
-button{cursor:pointer;font-weight:650} main{max-width:1400px;margin:0 auto;padding:20px}.auth{display:flex;gap:8px;flex:1;flex-wrap:wrap}.auth input{min-width:260px}
-.tabs{display:flex;gap:8px;margin:16px 0;flex-wrap:wrap}.tabs button.active{background:#111;color:#fff}.panel{display:none}.panel.active{display:block}
-.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:16px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-table{width:100%;border-collapse:collapse;font-size:13px} th,td{border-bottom:1px solid #e5e5e5;padding:8px;text-align:left;vertical-align:top} th{position:sticky;top:0;background:#fff}
-.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#eee;font-size:11px}.usable{background:#dff3df}.directional{background:#fff0be}.insufficient{background:#f5dada}
-pre{white-space:pre-wrap;word-break:break-word;background:#101010;color:#eee;padding:12px;border-radius:8px;max-height:420px;overflow:auto}.muted{color:#666;font-size:13px}.danger{color:#8a1717}
-h2{margin:4px 0 12px} h3{margin:0 0 10px}.decision{border-left:5px solid #111;padding-left:12px}.freeze{font-weight:800;color:#8a1717}
+:root{font-family:Inter,system-ui,sans-serif;color:#111;background:#f6f6f3}*{box-sizing:border-box}body{margin:0}header{background:#111;color:#fff;padding:18px 22px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}header b{font-size:22px;letter-spacing:.06em}.auth{display:flex;gap:8px;flex:1;flex-wrap:wrap}.auth input{min-width:230px}main{max-width:1400px;margin:auto;padding:20px}input,select,button,textarea{font:inherit;padding:9px;border:1px solid #bbb;border-radius:6px;background:#fff}button{cursor:pointer;font-weight:650}.tabs,.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tabs{margin:16px 0}.tabs button.active{background:#111;color:#fff}.panel{display:none}.panel.active{display:block}.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:16px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #e5e5e5;padding:8px;text-align:left;vertical-align:top}th{position:sticky;top:0;background:#fff}.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#eee;font-size:11px}.usable{background:#dff3df}.directional{background:#fff0be}.insufficient{background:#f5dada}.approved{background:#dff3df}.candidate{background:#fff0be}.rejected{background:#eee}.muted{color:#666;font-size:13px}.danger,.freeze{color:#8a1717;font-weight:750}.decision{border-left:5px solid #111;padding-left:12px}pre{white-space:pre-wrap;word-break:break-word;background:#101010;color:#eee;padding:12px;border-radius:8px;max-height:300px;overflow:auto}h2{margin:4px 0 12px}h3{margin:0 0 10px}
 </style>
 </head>
 <body>
-<header>
-  <b>FIELDMIND</b>
-  <div class="auth">
-    <input id="token" type="password" placeholder="Pilot bearer token">
-    <input id="programId" placeholder="Program ID (only if multi-program)">
-    <input id="planId" placeholder="Active week plan ID">
-    <button onclick="saveSession()">Save session</button>
-  </div>
-</header>
+<header><b>FIELDMIND</b><div class="auth"><input id="token" type="password" autocomplete="off" placeholder="Pilot bearer token"><input id="programId" placeholder="Program ID if multi-program"><input id="planId" placeholder="Active week plan ID"><button onclick="saveSession()">Use session</button></div></header>
 <main>
-  <div class="card">
-    <h3>Week setup</h3>
-    <div class="grid">
-      <input id="teamName" placeholder="Our team name">
-      <input id="teamId" placeholder="Optional source team UUID">
-      <input id="season" type="number" value="2026" placeholder="Season">
-      <input id="week" type="number" min="0" max="25" placeholder="Week">
-      <input id="opponent" placeholder="Opponent">
-      <select id="side"><option value="offense">Offense</option><option value="defense">Defense</option></select>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button onclick="createPlan()">Create / update week plan</button>
-      <span class="muted">The plan ID returned here drives Opponent, Self-scout and Call-sheet screens.</span>
-    </div>
-  </div>
-
-  <div class="tabs">
-    <button class="active" onclick="tab('plays',this)">Play Finder</button>
-    <button onclick="tab('opponentPanel',this)">Opponent one-pager</button>
-    <button onclick="tab('selfPanel',this)">Self-scout</button>
-    <button onclick="tab('callPanel',this)">Call-sheet</button>
-  </div>
-
-  <section id="plays" class="panel active">
-    <div class="card">
-      <h2>Play Finder</h2>
-      <div class="grid">
-        <input id="fOffense" placeholder="Offense">
-        <input id="fDefense" placeholder="Defense">
-        <select id="fDown"><option value="">Any down</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
-        <select id="fFamily"><option value="">Any play family</option></select>
-        <select id="fFormation"><option value="">Any formation</option></select>
-        <select id="fMotion"><option value="">Any motion</option></select>
-        <select id="fCoverage"><option value="">Any coverage</option></select>
-        <select id="fPersonnel"><option value="">Any personnel</option></select>
-      </div>
-      <div class="row" style="margin-top:10px"><button onclick="loadPlays()">Find plays</button><span id="playCount" class="muted"></span></div>
-    </div>
-    <div class="card" style="overflow:auto;max-height:600px">
-      <table><thead><tr><th>Play</th><th>Situation</th><th>Source</th><th>Trusted tags</th><th>Result</th><th>Tag vote</th></tr></thead><tbody id="playsBody"></tbody></table>
-    </div>
-  </section>
-
-  <section id="opponentPanel" class="panel">
-    <div class="card">
-      <h2>Opponent one-pager</h2>
-      <div class="row"><button onclick="loadOpponent()">Refresh</button><span class="muted">Low-n rows remain questions, not game-plan facts.</span></div>
-    </div>
-    <div id="opponentCards"></div>
-  </section>
-
-  <section id="selfPanel" class="panel">
-    <div class="card">
-      <h2>Self-scout</h2>
-      <div class="row"><button onclick="loadSelf()">Refresh</button><span class="muted">What are we repeatedly putting on film?</span></div>
-    </div>
-    <div id="selfCards"></div>
-  </section>
-
-  <section id="callPanel" class="panel">
-    <div class="card">
-      <h2>Call-sheet</h2>
-      <div class="row"><button onclick="loadCallSheet()">Refresh</button><button onclick="freezePlan()">Freeze Thursday sheet</button><span id="freezeState" class="freeze"></span></div>
-    </div>
-    <div class="card">
-      <h3>Add decision candidate</h3>
-      <div class="grid">
-        <select id="ruleType"><option value="call">CALL</option><option value="do_not_call">DO NOT CALL</option><option value="if_then">IF → THEN</option></select>
-        <input id="ruleSituation" placeholder="Situation">
-        <input id="ruleCall" placeholder="Call / answer">
-        <input id="ruleN" type="number" min="0" value="0" placeholder="Evidence n">
-        <select id="ruleConfidence"><option value="insufficient">Insufficient</option><option value="directional">Directional</option><option value="usable">Usable</option></select>
-        <input id="rulePriority" type="number" min="0" max="100" value="50" placeholder="Priority">
-      </div>
-      <textarea id="ruleReason" rows="3" style="width:100%;margin-top:10px" placeholder="Why"></textarea>
-      <div class="row" style="margin-top:8px"><button onclick="createRule()">Create candidate</button><span class="muted">Approve after evidence review; approved calls must clear n≥8.</span></div>
-    </div>
-    <div id="callSheet"></div>
-  </section>
-
-  <div class="card"><h3>System message</h3><pre id="status">Ready.</pre></div>
+<div class="card"><h3>Week setup</h3><div class="grid"><input id="teamName" placeholder="Our team name"><input id="teamId" placeholder="Optional source team UUID"><input id="season" type="number" value="2026"><input id="week" type="number" min="0" max="25" placeholder="Week"><input id="opponent" placeholder="Opponent"><select id="side"><option value="offense">Offense</option><option value="defense">Defense</option></select></div><div class="row" style="margin-top:10px"><button onclick="createPlan()">Create / update week plan</button><span class="muted">One plan controls the week-of-game decision loop.</span></div></div>
+<div class="tabs"><button class="active" onclick="tab('plays',this)">Play Finder</button><button onclick="tab('opponentPanel',this)">Opponent one-pager</button><button onclick="tab('selfPanel',this)">Self-scout</button><button onclick="tab('callPanel',this)">Call-sheet</button></div>
+<section id="plays" class="panel active"><div class="card"><h2>Play Finder</h2><div class="grid"><input id="fOffense" placeholder="Offense"><input id="fDefense" placeholder="Defense"><select id="fDown"><option value="">Any down</option><option>1</option><option>2</option><option>3</option><option>4</option></select><select id="fFamily"><option value="">Any play family</option></select><select id="fFormation"><option value="">Any formation</option></select><select id="fMotion"><option value="">Any motion</option></select><select id="fCoverage"><option value="">Any coverage</option></select><select id="fPersonnel"><option value="">Any personnel</option></select></div><div class="row" style="margin-top:10px"><button onclick="loadPlays()">Find plays</button><button onclick="loadAgreement()">Tag agreement</button><span id="playCount" class="muted"></span></div></div><div class="card" style="overflow:auto;max-height:620px"><table><thead><tr><th>Play</th><th>Situation</th><th>Source</th><th>Trusted tags</th><th>Result</th><th>Action</th></tr></thead><tbody id="playsBody"></tbody></table></div><div id="agreement"></div></section>
+<section id="opponentPanel" class="panel"><div class="card"><h2>Opponent one-pager</h2><div class="row"><button onclick="loadOpponent()">Refresh</button><span class="muted">n&lt;8 is a question, never a game-plan fact.</span></div></div><div id="opponentCards"></div></section>
+<section id="selfPanel" class="panel"><div class="card"><h2>Self-scout</h2><div class="row"><button onclick="loadSelf()">Refresh</button><span class="muted">What are we repeatedly putting on film?</span></div></div><div id="selfCards"></div></section>
+<section id="callPanel" class="panel">
+<div class="card"><h2>Call-sheet</h2><div class="row"><button onclick="loadCallSheet()">Refresh all</button><button id="freezeBtn" onclick="freezePlan()">Freeze Thursday sheet</button><span id="freezeState" class="freeze"></span></div></div>
+<div id="editableArea">
+<div class="card"><h3>Add decision candidate</h3><div class="grid"><select id="ruleType"><option value="call">CALL</option><option value="do_not_call">DO NOT CALL</option><option value="if_then">IF → THEN</option></select><input id="ruleSituation" placeholder="Situation"><input id="ruleCall" placeholder="Call / answer"><input id="ruleN" type="number" min="0" value="0" placeholder="Evidence n"><select id="ruleConfidence"><option value="insufficient">Insufficient</option><option value="directional">Directional</option><option value="usable">Usable</option></select><input id="rulePriority" type="number" min="0" max="100" value="50"></div><textarea id="ruleReason" rows="3" style="width:100%;margin-top:10px" placeholder="Evidence-based reason"></textarea><input id="ruleEvidence" style="width:100%;margin-top:8px" placeholder="Evidence play UUIDs, comma separated"><div class="row" style="margin-top:8px"><button onclick="createRule()">Create candidate</button><span class="muted">Approval is blocked below n=8 or with insufficient confidence.</span></div></div>
+<div class="card"><h3>Player-look evidence</h3><div class="grid"><input id="evPlayer" placeholder="Player UUID"><select id="evSource"><option value="practice">Practice</option><option value="game">Game</option><option value="meeting">Meeting</option></select><input id="evDate" type="date"><input id="evCall" placeholder="Call name"><select id="evCorrect"><option value="true">Processed correctly</option><option value="false">Incorrect / not processed</option></select><select id="evFormation"></select><select id="evMotion"></select><select id="evCoverage"></select><select id="evPersonnel"></select></div><input id="evNotes" style="width:100%;margin-top:8px" placeholder="Optional football-performance note"><div class="row" style="margin-top:8px"><button onclick="addPlayerEvidence()">Add evidence</button><span class="muted">Raw football evidence only. No IQ or cognition score.</span></div></div>
+<div class="card"><h3>Coordinator review</h3><div id="ruleReview">Load the call-sheet to review candidates.</div></div>
+</div>
+<div class="card"><h3>Approved Thursday sheet</h3><div id="callSheet"></div></div>
+<div class="card"><h3>Changed-a-call log</h3><div class="grid"><select id="changeType"><option value="added">Added</option><option value="removed">Removed</option><option value="modified">Modified</option><option value="confirmed">Confirmed</option></select><select id="changeYes"><option value="true">Changed a call: YES</option><option value="false">Changed a call: NO</option></select><input id="changeRule" placeholder="Optional call-rule UUID"><input id="changeNotes" placeholder="What changed / why"></div><div class="row" style="margin-top:8px"><button onclick="logChangedCall()">Log weekly outcome</button></div></div>
+</section>
+<div class="card"><h3>System message</h3><pre id="status">Ready.</pre></div>
 </main>
 <script>
-let vocab = {};
-const $ = id => document.getElementById(id);
-function headers(){
-  const h={"Authorization":"Bearer "+$("token").value.trim(),"Content-Type":"application/json"};
-  const p=$("programId").value.trim(); if(p) h["X-Program-ID"]=p; return h;
-}
-async function api(path, opts={}){
-  const res=await fetch(path,{...opts,headers:{...headers(),...(opts.headers||{})}});
-  const text=await res.text(); let data; try{data=JSON.parse(text)}catch{data=text}
-  if(!res.ok){$("status").textContent=JSON.stringify(data,null,2); throw new Error(res.status+" "+text)}
-  $("status").textContent=JSON.stringify(data,null,2); return data;
-}
-function saveSession(){localStorage.fm_token=$("token").value;localStorage.fm_program=$("programId").value;localStorage.fm_plan=$("planId").value}
-function tab(id,btn){document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");btn.classList.add("active")}
-function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function confidence(n){return n<8?"insufficient":n<20?"directional":"usable"}
-function badge(c){return `<span class="badge ${c}">${c.toUpperCase()}</span>`}
-async function loadVocab(){
-  const d=await api("/api/v1/vocab"); vocab=d.groups;
-  const map={fFamily:"play_family",fFormation:"formation",fMotion:"motion",fCoverage:"coverage_family",fPersonnel:"personnel"};
-  for(const [id,key] of Object.entries(map)){for(const v of vocab[key]||[]){if(v==="UNKNOWN")continue;$(id).insertAdjacentHTML("beforeend",`<option>${esc(v)}</option>`)}}
-}
-async function createPlan(){
-  const body={team_name:$("teamName").value.trim(),season:+$("season").value,week:+$("week").value,opponent_name:$("opponent").value.trim(),side:$("side").value};
-  if($("teamId").value.trim()) body.team_id=$("teamId").value.trim();
-  const d=await api("/api/v1/week-plans",{method:"POST",body:JSON.stringify(body)});$("planId").value=d.id;saveSession();
-}
-async function loadPlays(){
-  const q=new URLSearchParams(); const pairs=[["offense","fOffense"],["defense","fDefense"],["down","fDown"],["play_family","fFamily"],["formation","fFormation"],["motion","fMotion"],["coverage_family","fCoverage"],["personnel","fPersonnel"]];
-  pairs.forEach(([k,id])=>{if($(id).value.trim())q.set(k,$(id).value.trim())}); q.set("limit","100");
-  const d=await api("/api/v1/plays?"+q);$("playCount").textContent=d.count+" plays";$("playsBody").innerHTML="";
-  for(const p of d.plays){
-    const id=esc(p.id); const tags=[p.personnel,p.formation,p.motion,p.play_family,p.coverage_family].map(esc).join(" / ");
-    $("playsBody").insertAdjacentHTML("beforeend",`<tr><td>${id.slice(0,8)}<br><small>${esc(p.offense_team_name)} vs ${esc(p.defense_team_name)}</small></td><td>${p.down}&${p.distance}<br>${esc(p.field_zone)}</td><td>${esc(p.external_source)}<br>${esc(p.source_play_class||"")}</td><td>${tags}</td><td>${p.result_yards} yds</td><td><button onclick="tagPlay('${id}')">Tag</button></td></tr>`);
-  }
-}
-async function tagPlay(id){
-  if(!vocab.play_family) await loadVocab();
-  const family=prompt("play_family\n"+vocab.play_family.join(", "),"UNKNOWN"); if(family===null)return;
-  const formation=prompt("formation\n"+vocab.formation.join(", "),"UNKNOWN"); if(formation===null)return;
-  const motion=prompt("motion\n"+vocab.motion.join(", "),"UNKNOWN"); if(motion===null)return;
-  const coverage_family=prompt("coverage_family\n"+vocab.coverage_family.join(", "),"UNKNOWN"); if(coverage_family===null)return;
-  const personnel=prompt("personnel\n"+vocab.personnel.join(", "),"UNKNOWN"); if(personnel===null)return;
-  await api(`/api/v1/plays/${id}/tag-votes`,{method:"POST",body:JSON.stringify({play_family:family,formation,motion,coverage_family,personnel})});loadPlays();
-}
-function plan(){const v=$("planId").value.trim();if(!v)throw new Error("Enter a week plan ID");return v}
-function tendencyCard(t){
-  const c=t.confidence||confidence(t.n);return `<div class="card decision"><div class="row"><b>${esc(t.play_family||"")}</b>${badge(c)}<span>n=${t.n}</span></div><div class="muted">${esc(t.personnel||"")} · ${esc(t.formation||"")} · ${esc(t.motion||"")} · ${esc(t.coverage_family||"")}</div><div>Success: ${esc(t.success_pct)}% · Value: ${esc(t.avg_value??"")}</div></div>`
-}
-async function loadOpponent(){const d=await api(`/api/v1/week-plans/${plan()}/opponent`);$("opponentCards").innerHTML=d.tendencies.length?d.tendencies.map(tendencyCard).join(""):'<div class="card">No trusted tagged tendencies yet.</div>'}
-async function loadSelf(){const d=await api(`/api/v1/week-plans/${plan()}/self-scout`);$("selfCards").innerHTML=d.families.length?d.families.map(t=>`<div class="card decision"><div class="row"><b>${esc(t.play_family)}</b>${badge(t.confidence)}<span>n=${t.n}</span></div><div>${esc(t.personnel)} · ${esc(t.formation)} · ${esc(t.motion)}</div><div>Explosives ${t.explosives} · Failures ${t.failures} · Success ${esc(t.success_pct)}%</div></div>`).join(""):'<div class="card">No trusted self-scout tags yet.</div>'}
-async function createRule(){
-  const body={rule_type:$("ruleType").value,situation:$("ruleSituation").value,call_name:$("ruleCall").value,reason:$("ruleReason").value,sample_n:+$("ruleN").value,priority:+$("rulePriority").value,confidence:$("ruleConfidence").value,evidence_play_ids:[]};
-  await api(`/api/v1/week-plans/${plan()}/call-rules`,{method:"POST",body:JSON.stringify(body)});loadCallSheet();
-}
-async function loadCallSheet(){
-  const d=await api(`/api/v1/week-plans/${plan()}/call-sheet`);$("freezeState").textContent=d.week_plan.status==="frozen"?"FROZEN "+(d.week_plan.frozen_at||""):"";
-  $("callSheet").innerHTML=d.rules.length?d.rules.map(r=>`<div class="card decision"><div class="row"><b>${esc(r.rule_type).toUpperCase()}</b>${badge(r.confidence)}<span>n=${r.sample_n}</span></div><h3>${esc(r.situation)} → ${esc(r.call_name)}</h3><div>${esc(r.reason)}</div></div>`).join(""):'<div class="card">No approved call decisions yet.</div>';
-}
-async function freezePlan(){const d=await api(`/api/v1/week-plans/${plan()}/freeze`,{method:"POST"});$("freezeState").textContent="FROZEN "+(d.frozen_at||"");}
-window.addEventListener("load",async()=>{$("token").value=localStorage.fm_token||"";$("programId").value=localStorage.fm_program||"";$("planId").value=localStorage.fm_plan||"";if($("token").value){try{await loadVocab()}catch(e){}}});
+let vocab={};const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function headers(){const h={'Authorization':'Bearer '+$('token').value.trim(),'Content-Type':'application/json'};const p=$('programId').value.trim();if(p)h['X-Program-ID']=p;return h}
+async function api(path,opts={}){const res=await fetch(path,{...opts,headers:{...headers(),...(opts.headers||{})}});const text=await res.text();let data;try{data=JSON.parse(text)}catch{data=text}if(!res.ok){$('status').textContent=JSON.stringify(data,null,2);throw new Error(res.status+' '+text)}$('status').textContent=JSON.stringify(data,null,2);return data}
+function saveSession(){sessionStorage.fm_token=$('token').value;sessionStorage.fm_program=$('programId').value;sessionStorage.fm_plan=$('planId').value;loadVocab().catch(()=>{})}
+function tab(id,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');btn.classList.add('active')}
+function badge(c){return `<span class="badge ${esc(c)}">${esc(String(c).toUpperCase())}</span>`}
+function plan(){const v=$('planId').value.trim();if(!v)throw new Error('Enter a week plan ID');return v}
+function fillSelect(id,key,label){$(id).innerHTML=`<option value="UNKNOWN">${label}: UNKNOWN</option>`+(vocab[key]||[]).filter(v=>v!=='UNKNOWN').map(v=>`<option value="${esc(v)}">${label}: ${esc(v)}</option>`).join('')}
+async function loadVocab(){const d=await api('/api/v1/vocab');vocab=d.groups;const filters={fFamily:'play_family',fFormation:'formation',fMotion:'motion',fCoverage:'coverage_family',fPersonnel:'personnel'};for(const[id,key]of Object.entries(filters)){const first=$(id).options[0].outerHTML;$(id).innerHTML=first+(vocab[key]||[]).filter(v=>v!=='UNKNOWN').map(v=>`<option>${esc(v)}</option>`).join('')}fillSelect('evFormation','formation','Formation');fillSelect('evMotion','motion','Motion');fillSelect('evCoverage','coverage_family','Coverage');fillSelect('evPersonnel','personnel','Personnel')}
+async function createPlan(){const body={team_name:$('teamName').value.trim(),season:+$('season').value,week:+$('week').value,opponent_name:$('opponent').value.trim(),side:$('side').value};if($('teamId').value.trim())body.team_id=$('teamId').value.trim();const d=await api('/api/v1/week-plans',{method:'POST',body:JSON.stringify(body)});$('planId').value=d.id;saveSession()}
+async function loadPlays(){const q=new URLSearchParams();for(const[k,id]of[['offense','fOffense'],['defense','fDefense'],['down','fDown'],['play_family','fFamily'],['formation','fFormation'],['motion','fMotion'],['coverage_family','fCoverage'],['personnel','fPersonnel']])if($(id).value.trim())q.set(k,$(id).value.trim());q.set('limit','100');const d=await api('/api/v1/plays?'+q);$('playCount').textContent=d.count+' plays';$('playsBody').innerHTML=d.plays.map(p=>{const id=esc(p.id),tags=[p.personnel,p.formation,p.motion,p.play_family,p.coverage_family].map(esc).join(' / ');return `<tr><td>${id.slice(0,8)}<br><small>${esc(p.offense_team_name)} vs ${esc(p.defense_team_name)}</small></td><td>${p.down}&${p.distance}<br>${esc(p.field_zone)}</td><td>${esc(p.external_source)}<br>${esc(p.source_play_class||'')}</td><td>${tags}</td><td>${p.result_yards} yds</td><td><button onclick="tagPlay('${id}')">Tag</button></td></tr>`}).join('')}
+async function tagPlay(id){if(!vocab.play_family)await loadVocab();const vals={};for(const[key,label]of[['play_family','play_family'],['formation','formation'],['motion','motion'],['coverage_family','coverage_family'],['personnel','personnel']]){const v=prompt(label+'\n'+vocab[key].join(', '),'UNKNOWN');if(v===null)return;vals[key]=v}await api(`/api/v1/plays/${id}/tag-votes`,{method:'POST',body:JSON.stringify(vals)});loadPlays()}
+async function loadAgreement(){const d=await api('/api/v1/tag-agreement');$('agreement').innerHTML='<div class="card"><h3>Calibration agreement</h3>'+Object.entries(d.by_field).map(([k,v])=>`<div>${esc(k)}: ${v.agreement_pct??'—'}% ${v.usable?badge('usable'):badge('insufficient')}</div>`).join('')+'<hr>'+d.by_term.filter(x=>x.status==='kill').map(x=>`<div class="danger">TERM DIES: ${esc(x.field)} / ${esc(x.term)} — ${x.agreement_pct}% across ${x.opportunities} opportunities</div>`).join('')+'</div>'}
+function tendencyCard(t){return `<div class="card decision"><div class="row"><b>${esc(t.play_family||'')}</b>${badge(t.confidence)}<span>n=${t.n}</span></div><div class="muted">${esc(t.personnel||'')} · ${esc(t.formation||'')} · ${esc(t.motion||'')} · ${esc(t.coverage_family||'')}</div><div>Success ${esc(t.success_pct)}% · Value ${esc(t.avg_value??'')}</div></div>`}
+async function loadOpponent(){const d=await api(`/api/v1/week-plans/${plan()}/opponent`);$('opponentCards').innerHTML=d.tendencies.length?d.tendencies.map(tendencyCard).join(''):'<div class="card">No trusted tagged tendencies yet.</div>'}
+async function loadSelf(){const d=await api(`/api/v1/week-plans/${plan()}/self-scout`);$('selfCards').innerHTML=d.families.length?d.families.map(t=>`<div class="card decision"><div class="row"><b>${esc(t.play_family)}</b>${badge(t.confidence)}<span>n=${t.n}</span></div><div>${esc(t.personnel)} · ${esc(t.formation)} · ${esc(t.motion)}</div><div>Explosives ${t.explosives} · Failures ${t.failures} · Success ${esc(t.success_pct)}%</div></div>`).join(''):'<div class="card">No trusted self-scout tags yet.</div>'}
+async function createRule(){const ids=$('ruleEvidence').value.split(',').map(x=>x.trim()).filter(Boolean);const body={rule_type:$('ruleType').value,situation:$('ruleSituation').value,call_name:$('ruleCall').value,reason:$('ruleReason').value,sample_n:+$('ruleN').value,priority:+$('rulePriority').value,confidence:$('ruleConfidence').value,evidence_play_ids:ids};await api(`/api/v1/week-plans/${plan()}/call-rules`,{method:'POST',body:JSON.stringify(body)});await loadCallSheet()}
+async function reviewRules(){const d=await api(`/api/v1/week-plans/${plan()}/call-rules`);$('ruleReview').innerHTML=d.rules.length?d.rules.map(r=>`<div class="decision" style="margin:12px 0"><div class="row"><b>${esc(r.rule_type).toUpperCase()}</b>${badge(r.status)}${badge(r.confidence)}<span>n=${r.sample_n}</span></div><div><b>${esc(r.situation)} → ${esc(r.call_name)}</b></div><div class="muted">${esc(r.reason)}</div>${r.status==='candidate'?`<div class="row" style="margin-top:6px"><button onclick="setRuleStatus('${esc(r.id)}','approved')">Approve</button><button onclick="setRuleStatus('${esc(r.id)}','rejected')">Reject</button></div>`:''}</div>`).join(''):'No decision candidates yet.'}
+async function setRuleStatus(id,status){await api(`/api/v1/week-plans/${plan()}/call-rules/${id}`,{method:'PATCH',body:JSON.stringify({status})});await loadCallSheet()}
+async function addPlayerEvidence(){const body={player_id:$('evPlayer').value.trim(),source_type:$('evSource').value,event_date:$('evDate').value,formation:$('evFormation').value,motion:$('evMotion').value,coverage_family:$('evCoverage').value,personnel:$('evPersonnel').value,call_name:$('evCall').value.trim()||null,processed_correctly:$('evCorrect').value==='true',notes:$('evNotes').value.trim()||null};await api(`/api/v1/week-plans/${plan()}/player-look-evidence`,{method:'POST',body:JSON.stringify(body)});await loadCallSheet()}
+async function loadCallSheet(){const d=await api(`/api/v1/week-plans/${plan()}/call-sheet`);const frozen=d.week_plan.status==='frozen';$('freezeState').textContent=frozen?'FROZEN '+(d.week_plan.frozen_at||''):'';$('editableArea').style.display=frozen?'none':'block';$('freezeBtn').disabled=frozen;$('callSheet').innerHTML=d.rules.length?d.rules.map(r=>`<div class="decision" style="margin:12px 0"><div class="row"><b>${esc(r.rule_type).toUpperCase()}</b>${badge(r.confidence)}<span>n=${r.sample_n}</span></div><h3>${esc(r.situation)} → ${esc(r.call_name)}</h3><div>${esc(r.reason)}</div><div class="muted">Evidence plays: ${(r.evidence_play_ids||[]).map(esc).join(', ')||'none attached'}</div></div>`).join(''):'No approved call decisions yet.';if(d.player_look_evidence.length)$('callSheet').insertAdjacentHTML('beforeend','<hr><h3>Player-look evidence</h3>'+d.player_look_evidence.map(e=>`<div>${esc(e.player_name)} — ${e.correct}/${e.n} correct · ${esc(e.call_name||'uncoupled look')} · as of ${esc(e.as_of)}</div>`).join(''));if(!frozen)await reviewRules()}
+async function freezePlan(){if(!confirm('Freeze this Thursday sheet? Decision rules and player-look evidence will become immutable.'))return;await api(`/api/v1/week-plans/${plan()}/freeze`,{method:'POST'});await loadCallSheet()}
+async function logChangedCall(){const body={changed_call:$('changeYes').value==='true',change_type:$('changeType').value,notes:$('changeNotes').value.trim()||null};if($('changeRule').value.trim())body.call_rule_id=$('changeRule').value.trim();await api(`/api/v1/week-plans/${plan()}/changed-call`,{method:'POST',body:JSON.stringify(body)})}
+window.addEventListener('load',async()=>{$('token').value=sessionStorage.fm_token||'';$('programId').value=sessionStorage.fm_program||'';$('planId').value=sessionStorage.fm_plan||'';$('evDate').value=new Date().toISOString().slice(0,10);if($('token').value)try{await loadVocab()}catch{}})
 </script>
-</body>
-</html>
+</body></html>
