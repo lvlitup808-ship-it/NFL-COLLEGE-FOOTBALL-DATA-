@@ -33,8 +33,8 @@ jobs:
       - name: Compile Python entrypoints
         run: >-
           python -m py_compile
-          app/main.py app/ingest/nflverse.py app/ingest/cfbd.py
-          scripts/seed.py scripts/migrate.py scripts/ingest_nflverse.py
+          app/main.py app/pilot.py app/wedge.py app/wedge_extra.py app/ingest/nflverse.py app/ingest/cfbd.py
+          scripts/seed.py scripts/migrate.py scripts/provision_pilot_user.py scripts/ingest_nflverse.py
           scripts/ingest_cfbd.py scripts/benchmark.py scripts/data_quality.py
       - name: Run API and adapter tests
         run: python -m pytest -q
@@ -56,6 +56,32 @@ jobs:
           echo "$second"
           echo "$second" | grep -q '"rows_inserted":0'
           echo "$second" | grep -q '"rows_updated":3'
+      - name: Verify PBP cannot populate trusted film fields
+        run: |
+          python - <<'PY'
+          import asyncio, os, asyncpg
+          async def main():
+              conn = await asyncpg.connect(os.environ['DATABASE_URL'])
+              bad = await conn.fetchval("""
+                  SELECT COUNT(*) FROM plays
+                  WHERE external_source IN ('cfbd','nflverse')
+                    AND (play_family <> 'UNKNOWN'
+                         OR formation <> 'UNKNOWN'
+                         OR personnel_offense <> 'UNKNOWN'
+                         OR motion IS NOT NULL
+                         OR concept IS NOT NULL
+                         OR coverage IS NOT NULL)
+              """)
+              classified = await conn.fetchval("""
+                  SELECT COUNT(*) FROM plays
+                  WHERE external_source IN ('cfbd','nflverse')
+                    AND source_play_class IN ('pass','run')
+              """)
+              await conn.close()
+              assert bad == 0, bad
+              assert classified >= 1, classified
+          asyncio.run(main())
+          PY
       - name: Run source data quality gate
         run: python scripts/data_quality.py
       - name: Run V1 query benchmark gate
@@ -78,6 +104,7 @@ jobs:
             exit 1
           fi
           grep -q '"status":"ok"' /tmp/health.json
+          curl -fsS http://127.0.0.1:8000/ | grep -q 'FIELDMIND'
           ready_code=$(curl -sS -o /tmp/ready.json -w '%{http_code}' http://127.0.0.1:8000/ready)
           test "$ready_code" = "503"
           grep -q '"status":"not_ready"' /tmp/ready.json
