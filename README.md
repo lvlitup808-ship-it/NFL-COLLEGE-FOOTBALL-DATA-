@@ -1,38 +1,37 @@
 # FIELDMIND
 
-FIELDMIND is a football decision system built around one atomic unit: the play. V1 joins opponent/self-scout evidence, player production, scheme-specific cognition evidence, and weekly call rules without trying to replace film capture or create a universal player IQ score.
+FIELDMIND is a week-of-game football decision system built around one atomic unit: the play. The locked pilot turns trusted staff film tags and play evidence into a Thursday call/do-not-call sheet with visible sample size, confidence, supporting plays, and raw evidence of which players have processed the relevant look.
 
-## V1 included
+FIELDMIND is not a film-capture competitor, sports-data API company, public CFBD/nflverse explorer, PFF-style grading product, S2-style lab test, live play-caller, betting engine, or draft oracle.
 
-- Play database with indexed situation filters
-- Clip pointer attachment for S3-compatible storage
-- Opponent tendency report with minimum-sample guards
-- Self-scout explosive/failure report
-- Player card with five film-derived cognition traits
-- Weekly one-page call-sheet endpoint
-- Transparent QB college-to-NFL heuristic baseline
+## Locked pilot
+
+Production entrypoint: `app.pilot:app`.
+
+The pilot includes:
+
+- Opaque bearer-token auth and `program_id` tenancy
+- Program-scoped film tag votes and coach resolution
+- Controlled vocabulary capped at 40 values across play family, formation, motion, coverage family, and personnel
+- Two-tagger agreement reporting with an 80% calibration rule
+- Play Finder
+- Opponent One-Pager with explicit n/confidence states
+- Self-Scout
+- CALL / DO NOT CALL / IF-THEN decision objects
+- Raw player-look evidence; no cognition score UI
+- Thursday call-sheet freeze
+- Weekly `changed a call` logging
+- Customer-authorized Hudl/reference links only; no film scraping or mirror
 - Railway-safe `/health` and `/ready`
-- Structured JSON logging, bounded Postgres pool, reconnect backoff, graceful shutdown
-- 20-play fictional seed game
 
-## V1.1 production-data layer
-
-- Checksum-protected, advisory-locked Postgres migrations
-- Source provenance on games and plays
-- Streaming nflverse NFL play-by-play adapter; seasons are never materialized fully in RAM
-- Idempotent deterministic IDs for safe reruns
-- Ingest-run audit records with inserted/updated/skipped/error counts
-- V1 query benchmark harness with the product latency thresholds
-- CI Postgres integration gate covering migration, seed, benchmark, Docker build and health smoke tests
+The complete product contract, controlled vocabulary, pilot script, 90-day build order, risk register, customer interview, and operating runbook are in `docs/WEEKLY_WEDGE_EXECUTION.md`.
 
 ## Stack
 
 - FastAPI / Python 3.12
 - Railway Postgres via asyncpg
-- S3-compatible object storage for clip bytes
 - Docker / Uvicorn
-
-FastAPI was chosen over Next.js for V1 because the core product is data, filtering, football analytics, and Python-native model work. A separate web UI can be added after the decision APIs are stable.
+- Plain same-origin pilot web UI; no frontend framework required for the wedge
 
 ## Local start
 
@@ -41,8 +40,14 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pytest -q
-PORT=8000 uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+export DATABASE_URL='postgresql://...'
+python scripts/migrate.py
+
+PORT=8000 uvicorn app.pilot:app --host 0.0.0.0 --port 8000
 ```
+
+Open `http://127.0.0.1:8000/` for the four pilot screens.
 
 Liveness:
 
@@ -50,7 +55,7 @@ Liveness:
 curl http://127.0.0.1:8000/health
 ```
 
-Expected: HTTP 200 with `{"status":"ok",...}`. This route never depends on Postgres.
+`/health` intentionally has no database or external-service dependency.
 
 Readiness:
 
@@ -60,103 +65,138 @@ curl -i http://127.0.0.1:8000/ready
 
 Without `DATABASE_URL`, HTTP 503 is correct. With a working database, readiness returns 200.
 
-## Database lifecycle
+## Provision a pilot program/user
 
-Set the database connection once:
+After migrations:
 
 ```bash
-export DATABASE_URL='postgresql://...'
+python scripts/provision_pilot_user.py \
+  --program-name 'Example University Football' \
+  --email 'coach@example.edu' \
+  --display-name 'Coach Example' \
+  --role owner \
+  --days 30
 ```
 
-Apply schema changes before ingesting data:
+The script prints the bearer token once. Only the SHA-256 token hash is stored. Do not commit tokens, place them in URLs, or log them.
+
+Add additional users to the same program with the returned program UUID:
+
+```bash
+python scripts/provision_pilot_user.py \
+  --program-id '<program-uuid>' \
+  --email 'ga@example.edu' \
+  --display-name 'GA Example' \
+  --role ga \
+  --days 30
+```
+
+## Database lifecycle
+
+Run migrations explicitly:
 
 ```bash
 python scripts/migrate.py
 ```
 
-The migrator uses a Postgres advisory lock so two deploy processes cannot apply migrations concurrently. Applied SQL files are checksum-protected; never edit an applied migration. Add a new migration instead.
+The migrator uses a Postgres advisory lock and checksum-protects applied SQL. Never edit an applied migration; add a new migration instead.
 
-Load the fictional 20-play development game:
+Migration `003_weekly_wedge.sql` adds pilot tenancy, trusted tag writes, week plans, raw player-look evidence, changed-call logs, and source-PBP guardrails. Migration `004_decision_guard.sql` prevents a CALL/DO NOT CALL rule from becoming approved below the minimum evidence guard.
 
-```bash
-python scripts/seed.py
-```
+## Source evidence boundary
 
-## Real NFL data ingest
+CFBD/nflverse ingestion remains an explicit one-off job. It never runs on web startup, `/health`, `/ready`, or normal request paths.
 
-FIELDMIND can stream the public nflverse play-by-play CSV release directly into Postgres:
+For `cfbd` and `nflverse` rows, the database enforces the locked honesty rule:
 
-```bash
-python scripts/ingest_nflverse.py --season 2025
-```
+- pass/run source classification is preserved as `plays.source_play_class`
+- canonical `play_family` is `UNKNOWN`
+- formation is `UNKNOWN`
+- personnel is `UNKNOWN`
+- motion is null
+- concept is null
+- coverage is null
 
-Use a bounded test ingest first:
+Those football fields become trusted only through program-scoped human tagging. Do not infer them from PBP text or source heuristics.
 
-```bash
-python scripts/ingest_nflverse.py --season 2025 --max-rows 5000
-```
+Do not redistribute raw CFBD/nflverse feeds. Publishing or selling source data rather than private derived staff decisions requires a fresh rights/terms review.
 
-Or normalize a local CSV fixture:
+## College data ingest
 
-```bash
-python scripts/ingest_nflverse.py --season 2025 --url ./play_by_play_2025.csv
-```
-
-The adapter only maps evidence present in play-by-play. Coverage, motion, route concepts and other film-only facts are not inferred when the source does not support them. nflverse play-by-play is maintained by the nflverse project and distributed under its stated licensing terms; preserve attribution when using their data.
-
-## Performance gate
-
-Run the same decision-query thresholds used by the product requirements:
+Set the server-side credential only in the environment:
 
 ```bash
-python scripts/benchmark.py --iterations 25 --warmup 3
+export CFBD_API_KEY='...'
 ```
 
-The benchmark records p50, p95 and max latency in `benchmark_runs` and exits non-zero if the p95 threshold fails:
+Ingest one week:
 
-- Play Finder, 20 plays: `< 2000 ms`
-- Opponent report: `< 5000 ms`
-- Self-scout: `< 5000 ms`
+```bash
+python scripts/ingest_cfbd.py --season 2026 --week 1
+```
 
-Run this after each production season ingest and after index/query changes.
+Ingest a bounded range:
 
-## Primary API paths
+```bash
+python scripts/ingest_cfbd.py --season 2026 --start-week 1 --end-week 4
+```
+
+The CLI requests one week at a time and does not make CFBD availability part of API liveness.
+
+## Existing production-data layer
+
+The repo still contains the earlier production-data foundation:
+
+- source provenance on games and plays
+- streaming nflverse adapter
+- idempotent deterministic IDs for reruns
+- ingest-run audit records
+- benchmark harness
+- 20-play fictional seed
+- structured logging, bounded Postgres pool, reconnect backoff, graceful shutdown
+
+`app/main.py` remains the legacy V1 implementation/reference. The 90-day pilot runs `app.pilot:app`, which removes the legacy global `/api/v1` surfaces before registering the authenticated pilot API. That keeps the QB translation heuristic and cognition-score API out of the pilot without rewriting the stable DB lifecycle and health code.
+
+## Pilot API
 
 - `GET /health`
 - `GET /ready`
+- `GET /api/v1/me`
+- `GET /api/v1/vocab`
 - `GET /api/v1/plays`
-- `POST /api/v1/plays/{play_id}/clip`
-- `POST /api/v1/reports/opponent`
-- `GET /api/v1/reports/self-scout`
-- `GET /api/v1/players/{player_id}`
-- `GET /api/v1/weekly/call-sheet`
-- `POST /api/v1/models/qb-college-to-nfl`
+- `POST /api/v1/plays/{play_id}/tag-votes`
+- `POST /api/v1/plays/{play_id}/tag-resolve`
+- `GET /api/v1/tag-agreement`
+- `POST /api/v1/plays/{play_id}/links`
+- `POST /api/v1/week-plans`
+- `GET /api/v1/week-plans/{id}/opponent`
+- `GET /api/v1/week-plans/{id}/self-scout`
+- `POST /api/v1/week-plans/{id}/call-rules`
+- `PATCH /api/v1/week-plans/{id}/call-rules/{rule_id}`
+- `POST /api/v1/week-plans/{id}/player-look-evidence`
+- `POST /api/v1/week-plans/{id}/freeze`
+- `GET /api/v1/week-plans/{id}/call-sheet`
+- `POST /api/v1/week-plans/{id}/changed-call`
 
-OpenAPI is available at `/docs` when the service is running.
+OpenAPI/docs are hidden by default in pilot production. Set `PILOT_HIDE_DOCS=0` only for controlled development.
 
-## Railway start command
+## Railway
 
-Docker image default:
+Docker and `railway.json` now start:
 
 ```bash
-exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-1} --timeout-keep-alive 5
+exec uvicorn app.pilot:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-1} --timeout-keep-alive 5
 ```
 
-If Railway requires an explicit Docker start override:
-
-```bash
-/bin/sh -c "exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 5"
-```
-
-Run `python scripts/migrate.py` as an explicit deploy/one-off operation. Do not put season ingestion in the web-service startup command. Startup must remain fast and independent of data imports.
-
-`railway.json` is included because it was part of the requested deployment pack. Railway deprecated Config-as-Code in 2026, so new services should mirror those settings in current Railway Infrastructure-as-Code/service settings rather than depend on `railway.json` long-term.
+Run `python scripts/migrate.py` as a deploy/one-off operation. Never add season ingestion to the web start command.
 
 ## Product and operating specs
 
-- `docs/PRODUCT_SPEC.md`: architecture, cognition graph, week-of-game workflow, API contract, examples, 12-week plan, competitive kill-sheet, risks and Railway runbook.
-- `docs/PRODUCTION_DATA.md`: production database, ingest, provenance, benchmark and rollback procedure.
+- `docs/WEEKLY_WEDGE_EXECUTION.md`: locked commercial/product/football execution contract for the pilot
+- `docs/PRODUCT_SPEC.md`: earlier V1 architecture and system spec; sections outside the locked pilot are not the current 90-day build order
+- `docs/COLLEGE_DATA.md`: CFBD ingestion and source-evidence rules
+- `docs/PRODUCTION_DATA.md`: production database, ingest, provenance, benchmark and rollback procedure
 
-## Non-negotiable cognition guardrails
+## Player-evidence guardrail
 
-FIELDMIND cognition traits are football-performance evidence. They are not IQ, diagnosis, mental-health assessment, or medical evaluation. Scores must display sample size and confidence and cannot be used as a standalone cut, scholarship, contract, or draft decision.
+FIELDMIND player evidence is football-performance evidence only. It is not IQ, diagnosis, mental-health assessment, neurological/medical evaluation, or a measure of overall intelligence or potential. It cannot be used as a standalone cut, scholarship, roster, contract, recruiting, NIL, transfer, or draft decision. Every interpretation must retain sample size, evidence count, look diversity, source, and as-of date.
