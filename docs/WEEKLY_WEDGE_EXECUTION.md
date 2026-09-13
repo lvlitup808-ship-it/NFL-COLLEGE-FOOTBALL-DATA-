@@ -300,6 +300,8 @@ No tendency or call rule becomes actionable below the minimum sample guard.
 
 ## Pilot operations
 
+Before showing the pilot to another staff, run one controlled 20-play opponent-week slice and record the result in [`docs/PILOT_REHEARSAL_CHECKLIST.md`](PILOT_REHEARSAL_CHECKLIST.md). Treat workarounds, elapsed time, agreement, film failures, and the coach's changed-a-call answer as observed evidence—not marketing copy.
+
 Apply migrations:
 
 ```bash
