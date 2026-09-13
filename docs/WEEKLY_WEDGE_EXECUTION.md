@@ -2,6 +2,8 @@
 
 Status: implementation contract for the 90-day pilot.
 
+Manual Sunday source-triage operation: [`docs/SUNDAY_TRIAGE.md`](SUNDAY_TRIAGE.md).
+
 ## 1. Company line
 
 FIELDMIND is the week-of-game decision layer that turns a staff's own film tags and play evidence into a Thursday call/do-not-call sheet with visible sample size, confidence, and evidence of which players have processed the relevant look.
