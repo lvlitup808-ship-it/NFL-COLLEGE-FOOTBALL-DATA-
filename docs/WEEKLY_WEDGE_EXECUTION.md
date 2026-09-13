@@ -94,7 +94,7 @@ Priority when multiple labels fit: `BUNCH -> EMPTY -> NUB -> CONDENSED -> 3X1 ->
 
 ## 5. Data contract
 
-Migration `003_weekly_wedge.sql` adds `users`, `program_memberships`, `auth_tokens`, `play_tag_votes`, `program_play_tags`, `week_plans`, `player_look_evidence`, `changed_call_logs`, and `play_links`; scopes `call_rules` to `program_id` + `week_plan_id`; and adds `plays.source_play_class`.
+Migration `003_weekly_wedge.sql` adds `users`, `program_memberships`, `auth_tokens`, `play_tag_votes`, `program_play_tags`, `week_plans`, `player_look_evidence`, `changed_call_logs`, and `play_links`; scopes `call_rules` to `program_id` + `week_plan_id`; and adds `plays.source_play_class`. Migration `007_hub_clip_ids.sql` adds the many-source `entity_ids` map, user-owned normalized `play_telestrates`, saved Play Finder searches, finder indexes, and a source-ID backfill. Migrations `001`–`006` remain unchanged.
 
 External `cfbd`/`nflverse` PBP is guarded at the database boundary: source pass/run becomes `source_play_class`; canonical `play_family` becomes `UNKNOWN`; `personnel_offense` and `formation` become `UNKNOWN`; `motion`, `concept`, and `coverage` become null. Staff truth lives in `program_play_tags` instead of the global `plays` row.
 
@@ -107,6 +107,12 @@ Bearer tokens are opaque random values. Only SHA-256 token hashes are persisted.
 - `GET /api/v1/me`
 - `GET /api/v1/vocab`
 - `GET /api/v1/plays`
+- `GET/POST /api/v1/entities`
+- `GET /api/v1/plays/{play_id}/ids`
+- `GET /api/v1/plays/{play_id}/clip`
+- `PUT /api/v1/plays/{play_id}/telestrate`
+- `GET/POST/DELETE /api/v1/play-searches`
+- `POST /api/v1/plays/bulk-tag-votes`
 - `POST /api/v1/plays/{play_id}/tag-votes`
 - `POST /api/v1/plays/{play_id}/tag-resolve` (coach/owner)
 - `GET /api/v1/tag-agreement`
@@ -127,7 +133,7 @@ Bearer tokens are opaque random values. Only SHA-256 token hashes are persisted.
 
 Sunday (45-60 min): validate previous game; resolve tags; run self-scout; compare last sheet with actual calls; log changed-a-call.
 
-Monday (150-210 min per GA initially): two GAs blind-tag the relevant opponent sample. Target roughly 180 opponent plays from the most relevant three games. Resolve disagreement only after blind entry. Output 5-10 questions, not 40 tendencies.
+Monday (150-210 min per GA initially): open the default untagged queue, make a situation cutup, open each authorized clip, tag it, and copy selected play IDs into Call-sheet evidence. Two GAs blind-tag the relevant opponent sample. Target roughly 180 opponent plays from the most relevant three games. Resolve disagreement only after blind entry. Output 5-10 questions, not 40 tendencies.
 
 Tuesday (25-35 min coordinator): turn only qualified evidence into at most 5 CALL, 5 DO NOT CALL, and 5 IF-THEN decisions.
 
@@ -145,6 +151,20 @@ Honesty copy:
 - n=8-19: `DIRECTIONAL — use this to guide film/practice questions, not an automatic check.`
 - n>=20: `USABLE — enough evidence to enter staff review. Still not deterministic.`
 - Call sheet: `No tendency or call rule becomes actionable below the minimum sample guard.`
+
+### Source IDs are not trusted football tags
+
+`entity_ids` answers identity questions such as “which CFBD and internal IDs refer to this play?” A source ID does not prove that two strings from different feeds are equivalent; global rows record the source mapping made by ingest and program-scoped rows record an explicit tenant override. `source_play_class` is public-PBP pass/run evidence only. Formation, motion, personnel, coverage family, and play family remain `UNKNOWN` until program staff tag film and the existing two-GA rule resolves them (or a coach explicitly resolves them).
+
+The clip bay is a browser view over the current filtered Play Finder result. It stores customer-authorized links and normalized 0–1 drawing coordinates; it does not burn drawings into video or create a new film copy.
+
+Explicit refusals for this container and pilot:
+
+- No TTS or VoiceStudio engine.
+- No DFS, LineupIQ, betting simulation, or betting workflow.
+- No NFL+ scraping or ingest.
+- No export or redistribution of raw CFBD/nflverse feeds.
+- No hosting or downloading All-22 without documented rights.
 
 ## 7. Pilot
 
