@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import os
 import secrets
+import time
 import uuid
 
 import asyncpg
@@ -169,6 +170,12 @@ def test_database_tenancy_facets_bulk_resolution_and_identity_override():
     try:
         from app.pilot import app
         with TestClient(app) as client:
+            for _ in range(30):
+                if client.get("/ready").status_code == 200:
+                    break
+                time.sleep(0.1)
+            else:
+                pytest.fail("pilot database pool did not become ready")
             auth_a = {"Authorization": f"Bearer {tokens['a']}"}
             auth_ga2 = {"Authorization": f"Bearer {tokens['ga2']}"}
             listed = client.get("/api/v1/plays?limit=100", headers=auth_a)
