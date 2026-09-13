@@ -56,6 +56,10 @@ jobs:
           echo "$second"
           echo "$second" | grep -q '"rows_inserted":0'
           echo "$second" | grep -q '"rows_updated":3'
+      - name: Verify hub tenancy and two-GA integration
+        env:
+          HUB_DB_TEST: '1'
+        run: python -m pytest -q tests/test_hub_clip_ids.py
       - name: Verify PBP cannot populate trusted film fields
         run: |
           python - <<'PY'

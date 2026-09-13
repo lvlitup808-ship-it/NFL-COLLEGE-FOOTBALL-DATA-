@@ -125,6 +125,39 @@ class PlayLinkBody(BaseModel):
     url: HttpUrl
 
 
+class EntityIdBody(BaseModel):
+    kind: Literal["team", "player", "game", "play"]
+    canonical_id: uuid.UUID
+    source: Literal["cfbd", "nflverse", "espn", "pfr", "gsis", "hudl", "fieldmind", "other"]
+    external_id: str = Field(min_length=1, max_length=300)
+    label: str | None = Field(default=None, max_length=300)
+
+
+class StrokePoint(BaseModel):
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+
+
+class Stroke(BaseModel):
+    color: str = Field(min_length=1, max_length=32)
+    width: float = Field(gt=0, le=40)
+    points: list[StrokePoint] = Field(min_length=1, max_length=2000)
+
+
+class TelestrateBody(BaseModel):
+    strokes: list[Stroke] = Field(default_factory=list, max_length=200)
+
+
+class PlaySearchBody(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    query: dict[str, Any]
+
+
+class BulkTagBody(BaseModel):
+    play_ids: list[uuid.UUID] = Field(min_length=1, max_length=40)
+    tags: TagBody
+
+
 class WeekPlanCreate(BaseModel):
     team_id: uuid.UUID | None = None
     team_name: str = Field(min_length=1, max_length=120)
@@ -281,7 +314,25 @@ async def list_plays(
     motion: str | None = None,
     coverage_family: str | None = None,
     play_family: str | None = None,
-    limit: int = Query(default=20, ge=1, le=100),
+    q: str | None = Query(default=None, max_length=80),
+    game_id: uuid.UUID | None = None,
+    season: int | None = Query(default=None, ge=2000, le=2100),
+    week: int | None = Query(default=None, ge=0, le=25),
+    source: Literal["cfbd", "nflverse", "seed", "fieldmind", "any"] = "any",
+    source_play_class: Literal["pass", "run"] | None = None,
+    success: bool | None = None,
+    explosive: bool | None = None,
+    turnover: bool | None = None,
+    has_film: bool | None = None,
+    tag_state: Literal["untagged", "partial", "agreed", "overridden"] | None = None,
+    exclude_unknown: bool = False,
+    min_yards: int | None = None,
+    max_yards: int | None = None,
+    min_distance: int | None = Query(default=None, ge=0),
+    max_distance: int | None = Query(default=None, ge=0),
+    sort: Literal["sequence", "epa_desc", "yards_desc", "recent_tag"] = "sequence",
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=25, ge=1, le=100),
 ):
     for field, value in [
         ("personnel", personnel), ("formation", formation), ("motion", motion),
@@ -289,13 +340,17 @@ async def list_plays(
     ]:
         validate_tag(field, value)
     pool = require_pool(request)
-    conditions = []
+    if min_yards is not None and max_yards is not None and min_yards > max_yards:
+        raise HTTPException(status_code=422, detail="min_yards_must_not_exceed_max_yards")
+    if min_distance is not None and max_distance is not None and min_distance > max_distance:
+        raise HTTPException(status_code=422, detail="min_distance_must_not_exceed_max_distance")
+    conditions: list[str] = []
     values: list[Any] = [ctx.program_id]
 
-    def add(expr: str, value: Any) -> None:
+    def add(expr: str, value: Any, operator: str = "=") -> None:
         if value is not None:
             values.append(value)
-            conditions.append(f"{expr} = ${len(values)}")
+            conditions.append(f"{expr} {operator} ${len(values)}")
 
     add("p.offense_team_name", offense)
     add("p.defense_team_name", defense)
@@ -307,9 +362,62 @@ async def list_plays(
     add("COALESCE(pt.motion,'UNKNOWN')", motion)
     add("COALESCE(pt.coverage_family,'UNKNOWN')", coverage_family)
     add("COALESCE(pt.play_family,'UNKNOWN')", play_family)
-    values.append(limit)
+    add("p.game_id", game_id)
+    add("p.source_play_class", source_play_class)
+    add("p.success", success)
+    add("p.explosive", explosive)
+    add("p.turnover", turnover)
+    add("p.result_yards", min_yards, ">=")
+    add("p.result_yards", max_yards, "<=")
+    add("p.distance", min_distance, ">=")
+    add("p.distance", max_distance, "<=")
+    if source == "seed":
+        conditions.append("p.external_source IS NULL")
+    elif source == "fieldmind":
+        values.append(["fieldmind", "fieldmind_customer"])
+        conditions.append(f"p.external_source=ANY(${len(values)}::text[])")
+    elif source != "any":
+        add("p.external_source", source)
+    if q:
+        values.append(f"%{q}%")
+        conditions.append(
+            f"(p.play_text ILIKE ${len(values)} OR p.source_play_type ILIKE ${len(values)})"
+        )
+    if has_film is not None:
+        values.append(has_film)
+        conditions.append(
+            f"(EXISTS (SELECT 1 FROM play_links fl WHERE fl.program_id=$1 AND fl.play_id=p.id)) = ${len(values)}"
+        )
+    tag_expr = """CASE
+        WHEN pt.play_id IS NULL THEN 'untagged'
+        WHEN pt.resolved_by IS NOT NULL THEN 'overridden'
+        WHEN 'UNKNOWN' IN (pt.play_family,pt.formation,pt.motion,pt.coverage_family,pt.personnel) THEN 'partial'
+        ELSE 'agreed' END"""
+    if tag_state:
+        values.append(tag_state)
+        conditions.append(f"({tag_expr}) = ${len(values)}")
+    if exclude_unknown:
+        conditions.append("COALESCE(pt.play_family,'UNKNOWN') <> 'UNKNOWN'")
+
+    join_games = season is not None or week is not None
+    game_join = "JOIN games g ON g.id=p.game_id" if join_games else ""
+    if season is not None:
+        add("g.season", season)
+    if week is not None:
+        add("g.week", week)
     where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
-    sql = f"""
+    order = {
+        "sequence": "p.game_id,p.play_sequence",
+        "epa_desc": "COALESCE(p.epa,p.ppa) DESC NULLS LAST,p.game_id,p.play_sequence",
+        "yards_desc": "p.result_yards DESC,p.game_id,p.play_sequence",
+        "recent_tag": "pt.updated_at DESC NULLS LAST,p.game_id,p.play_sequence",
+    }[sort]
+    season_expr = "g.season" if join_games else "(SELECT gx.season FROM games gx WHERE gx.id=p.game_id)"
+    week_expr = "g.week" if join_games else "(SELECT gx.week FROM games gx WHERE gx.id=p.game_id)"
+    base_from = f"""FROM plays p
+        {game_join}
+        LEFT JOIN program_play_tags pt ON pt.program_id=$1 AND pt.play_id=p.id"""
+    select_sql = f"""
         SELECT p.id,p.game_id,p.play_sequence,p.quarter,p.clock,p.down,p.distance,p.yard_line,
                p.distance_bucket,p.field_zone,p.offense_team_name,p.defense_team_name,
                p.result_yards,p.epa,p.ppa,p.success,p.explosive,p.turnover,
@@ -320,19 +428,65 @@ async def list_plays(
                COALESCE(pt.coverage_family,'UNKNOWN') AS coverage_family,
                COALESCE(pt.play_family,'UNKNOWN') AS play_family,
                pt.agreement, pt.resolved_by,
+               ({tag_expr}) AS tag_state,
+               {season_expr} AS game_season, {week_expr} AS game_week,
+               COALESCE(p.epa,p.ppa) AS value,
+               link.url AS film_url, link.provider AS film_provider,
+               COALESCE((SELECT jsonb_agg(jsonb_build_object('source',ei.source,'external_id',ei.external_id)
+                         ORDER BY ei.source,ei.external_id)
+                         FROM entity_ids ei WHERE ei.kind='play' AND ei.canonical_id=p.id
+                           AND (ei.program_id IS NULL OR ei.program_id=$1)), '[]'::jsonb) AS source_ids,
                EXISTS (
                    SELECT 1 FROM play_links l
                    WHERE l.program_id=$1 AND l.play_id=p.id
                ) AS has_film_link
-        FROM plays p
-        LEFT JOIN program_play_tags pt ON pt.program_id=$1 AND pt.play_id=p.id
+        {base_from}
+        LEFT JOIN LATERAL (
+            SELECT l.url,l.provider FROM play_links l
+            WHERE l.program_id=$1 AND l.play_id=p.id
+            ORDER BY l.created_at DESC,l.id DESC LIMIT 1
+        ) link ON true
         {where}
-        ORDER BY p.game_id,p.play_sequence
-        LIMIT ${len(values)}
+        ORDER BY {order}
     """
+    facet_names = ["play_family", "formation", "motion", "coverage_family", "personnel", "down", "field_zone"]
     async with pool.acquire() as conn:
-        rows = await conn.fetch(sql, *values)
-    return {"count": len(rows), "plays": [dict(row) for row in rows]}
+        total = await conn.fetchval(f"SELECT COUNT(*) {base_from} {where}", *values)
+        facet_rows: dict[str, list[asyncpg.Record]] = {}
+        facet_exprs = {
+            "play_family": "COALESCE(pt.play_family,'UNKNOWN')",
+            "formation": "COALESCE(pt.formation,'UNKNOWN')",
+            "motion": "COALESCE(pt.motion,'UNKNOWN')",
+            "coverage_family": "COALESCE(pt.coverage_family,'UNKNOWN')",
+            "personnel": "COALESCE(pt.personnel,'UNKNOWN')",
+            "down": "p.down::text", "field_zone": "p.field_zone",
+        }
+        for name in facet_names:
+            expr = facet_exprs[name]
+            facet_rows[name] = await conn.fetch(
+                f"SELECT {expr} AS value,COUNT(*)::int AS n {base_from} {where} GROUP BY {expr} ORDER BY n DESC,value",
+                *values,
+            )
+        page_values = [*values, limit, offset]
+        rows = await conn.fetch(
+            select_sql + f" LIMIT ${len(values)+1} OFFSET ${len(values)+2}", *page_values
+        )
+    echo = {
+        "offense": offense, "defense": defense, "down": down, "distance_bucket": distance_bucket,
+        "field_zone": field_zone, "personnel": personnel, "formation": formation, "motion": motion,
+        "coverage_family": coverage_family, "play_family": play_family, "q": q, "game_id": game_id,
+        "season": season, "week": week, "source": source, "source_play_class": source_play_class,
+        "success": success, "explosive": explosive, "turnover": turnover, "has_film": has_film,
+        "tag_state": tag_state, "exclude_unknown": exclude_unknown, "min_yards": min_yards,
+        "max_yards": max_yards, "min_distance": min_distance, "max_distance": max_distance,
+    }
+    return {
+        "count": len(rows), "total": total, "offset": offset, "limit": limit, "sort": sort,
+        "filters_echo": echo,
+        "honesty": "Trusted columns are program tags. source_play_class and source IDs are public-PBP only.",
+        "plays": [dict(row) for row in rows],
+        "facets": {name: [dict(row) for row in facet_rows[name]] for name in facet_names},
+    }
 
 
 @router.post("/plays/{play_id}/tag-votes", status_code=201)
@@ -477,6 +631,14 @@ async def create_play_link(
     async with pool.acquire() as conn:
         if not await conn.fetchval("SELECT 1 FROM plays WHERE id=$1", play_id):
             raise HTTPException(status_code=404, detail="play_not_found")
+        existing = await conn.fetchrow(
+            """SELECT id,play_id,provider,url FROM play_links
+               WHERE program_id=$1 AND play_id=$2 AND provider=$3 AND url=$4
+               ORDER BY created_at DESC LIMIT 1""",
+            ctx.program_id, play_id, body.provider, str(body.url),
+        )
+        if existing:
+            return {**dict(existing), "created": False}
         await conn.execute(
             """
             INSERT INTO play_links (id,program_id,play_id,provider,url,created_by)
@@ -484,7 +646,241 @@ async def create_play_link(
             """,
             link_id, ctx.program_id, play_id, body.provider, str(body.url), ctx.user_id,
         )
-    return {"id": link_id, "play_id": play_id, "provider": body.provider, "url": str(body.url)}
+    return {"id": link_id, "play_id": play_id, "provider": body.provider, "url": str(body.url), "created": True}
+
+
+@router.post("/plays/{play_id}/link", status_code=201)
+async def create_play_link_singular(
+    play_id: uuid.UUID,
+    body: PlayLinkBody,
+    request: Request,
+    ctx: AuthContext = Depends(require_auth),
+):
+    """Hub-compatible spelling; the plural route remains for pilot clients."""
+    return await create_play_link(play_id, body, request, ctx)
+
+
+@router.get("/entities")
+async def find_entities(
+    request: Request,
+    kind: Literal["team", "player", "game", "play"],
+    source: Literal["cfbd", "nflverse", "espn", "pfr", "gsis", "hudl", "fieldmind", "other"],
+    external_id: str = Query(min_length=1, max_length=300),
+    ctx: AuthContext = Depends(require_auth),
+):
+    pool = require_pool(request)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id,program_id,kind,canonical_id,source,external_id,label,created_at
+            FROM entity_ids
+            WHERE kind=$1 AND source=$2 AND external_id=$3
+              AND (program_id IS NULL OR program_id=$4)
+            ORDER BY program_id NULLS LAST,created_at
+            """,
+            kind, source, external_id, ctx.program_id,
+        )
+    return {"count": len(rows), "entities": [dict(row) for row in rows]}
+
+
+@router.post("/entities", status_code=201)
+async def create_entity_id(
+    body: EntityIdBody,
+    request: Request,
+    ctx: AuthContext = Depends(require_auth),
+):
+    require_coach(ctx)
+    table = {"team": "teams", "player": "players", "game": "games", "play": "plays"}[body.kind]
+    pool = require_pool(request)
+    async with pool.acquire() as conn:
+        if not await conn.fetchval(f"SELECT 1 FROM {table} WHERE id=$1", body.canonical_id):
+            raise HTTPException(status_code=422, detail="canonical_id_not_found")
+        row = await conn.fetchrow(
+            """
+            INSERT INTO entity_ids (program_id,kind,canonical_id,source,external_id,label)
+            VALUES ($1,$2,$3,$4,$5,$6)
+            ON CONFLICT (kind,source,external_id,
+                         (COALESCE(program_id,'00000000-0000-0000-0000-000000000000'::uuid)))
+            DO UPDATE SET canonical_id=EXCLUDED.canonical_id,label=EXCLUDED.label
+            RETURNING id,program_id,kind,canonical_id,source,external_id,label,created_at
+            """,
+            ctx.program_id, body.kind, body.canonical_id, body.source, body.external_id, body.label,
+        )
+    return dict(row)
+
+
+@router.get("/plays/{play_id}/ids")
+async def play_ids(
+    play_id: uuid.UUID,
+    request: Request,
+    ctx: AuthContext = Depends(require_auth),
+):
+    pool = require_pool(request)
+    async with pool.acquire() as conn:
+        if not await conn.fetchval("SELECT 1 FROM plays WHERE id=$1", play_id):
+            raise HTTPException(status_code=404, detail="play_not_found")
+        rows = await conn.fetch(
+            """
+            SELECT id,program_id,source,external_id,label,created_at
+            FROM entity_ids
+            WHERE kind='play' AND canonical_id=$1
+              AND (program_id IS NULL OR program_id=$2)
+            ORDER BY program_id NULLS LAST,source,external_id
+            """,
+            play_id, ctx.program_id,
+        )
+    return {"play_id": play_id, "source_ids": [dict(row) for row in rows]}
+
+
+@router.get("/plays/{play_id}/clip")
+async def get_play_clip(
+    play_id: uuid.UUID,
+    request: Request,
+    ctx: AuthContext = Depends(require_auth),
+):
+    pool = require_pool(request)
+    async with pool.acquire() as conn:
+        if not await conn.fetchval("SELECT 1 FROM plays WHERE id=$1", play_id):
+            raise HTTPException(status_code=404, detail="play_not_found")
+        link = await conn.fetchrow(
+            """SELECT id,url,provider,created_at FROM play_links
+               WHERE program_id=$1 AND play_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1""",
+            ctx.program_id, play_id,
+        )
+        clip = await conn.fetchrow(
+            "SELECT id,start_ms,end_ms FROM clips WHERE play_id=$1 ORDER BY created_at DESC,id DESC LIMIT 1",
+            play_id,
+        )
+        own = await conn.fetchrow(
+            """SELECT id,strokes,updated_at FROM play_telestrates
+               WHERE program_id=$1 AND play_id=$2 AND created_by=$3""",
+            ctx.program_id, play_id, ctx.user_id,
+        )
+        others = await conn.fetch(
+            """SELECT DISTINCT ON (created_by) id,created_by,updated_at
+               FROM play_telestrates
+               WHERE program_id=$1 AND play_id=$2 AND created_by<>$3
+               ORDER BY created_by,updated_at DESC""",
+            ctx.program_id, play_id, ctx.user_id,
+        )
+    return {
+        "play_id": play_id,
+        "film_url": link["url"] if link else None,
+        "provider": link["provider"] if link else None,
+        "start_ms": clip["start_ms"] if clip and link else None,
+        "end_ms": clip["end_ms"] if clip and link else None,
+        "telestrate": dict(own) if own else {"id": None, "strokes": [], "updated_at": None},
+        "other_staff_overlays": [dict(row) for row in others],
+    }
+
+
+@router.put("/plays/{play_id}/telestrate")
+async def put_telestrate(
+    play_id: uuid.UUID,
+    body: TelestrateBody,
+    request: Request,
+    ctx: AuthContext = Depends(require_auth),
+):
+    require_write(ctx)
+    pool = require_pool(request)
+    async with pool.acquire() as conn:
+        if not await conn.fetchval("SELECT 1 FROM plays WHERE id=$1", play_id):
+            raise HTTPException(status_code=404, detail="play_not_found")
+        row = await conn.fetchrow(
+            """
+            INSERT INTO play_telestrates (program_id,play_id,created_by,strokes)
+            VALUES ($1,$2,$3,$4::jsonb)
+            ON CONFLICT (program_id,play_id,created_by)
+            DO UPDATE SET strokes=EXCLUDED.strokes,updated_at=now()
+            RETURNING id,play_id,created_by,strokes,created_at,updated_at
+            """,
+            ctx.program_id, play_id, ctx.user_id, json.dumps(body.model_dump()["strokes"]),
+        )
+    return dict(row)
+
+
+@router.post("/play-searches", status_code=201)
+async def save_play_search(
+    body: PlaySearchBody,
+    request: Request,
+    ctx: AuthContext = Depends(require_auth),
+):
+    pool = require_pool(request)
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO play_searches (program_id,user_id,name,query)
+            VALUES ($1,$2,$3,$4::jsonb)
+            ON CONFLICT (program_id,user_id,name)
+            DO UPDATE SET query=EXCLUDED.query,updated_at=now()
+            RETURNING id,name,query,created_at,updated_at
+            """,
+            ctx.program_id, ctx.user_id, body.name, json.dumps(body.query),
+        )
+    return dict(row)
+
+
+@router.get("/play-searches")
+async def list_play_searches(request: Request, ctx: AuthContext = Depends(require_auth)):
+    pool = require_pool(request)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT id,name,query,created_at,updated_at FROM play_searches
+               WHERE program_id=$1 AND user_id=$2 ORDER BY name""",
+            ctx.program_id, ctx.user_id,
+        )
+    return {"searches": [dict(row) for row in rows]}
+
+
+@router.delete("/play-searches/{search_id}", status_code=204)
+async def delete_play_search(
+    search_id: uuid.UUID,
+    request: Request,
+    ctx: AuthContext = Depends(require_auth),
+):
+    pool = require_pool(request)
+    async with pool.acquire() as conn:
+        deleted = await conn.fetchval(
+            """DELETE FROM play_searches WHERE id=$1 AND program_id=$2 AND user_id=$3
+               RETURNING id""",
+            search_id, ctx.program_id, ctx.user_id,
+        )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="play_search_not_found")
+
+
+@router.post("/plays/bulk-tag-votes", status_code=201)
+async def bulk_tag_votes(
+    body: BulkTagBody,
+    request: Request,
+    ctx: AuthContext = Depends(require_auth),
+):
+    require_write(ctx)
+    payload = body.tags.model_dump(exclude_none=True)
+    if not payload:
+        raise HTTPException(status_code=422, detail="at_least_one_tag_required")
+    for field, value in payload.items():
+        validate_tag(field, value)
+    pool = require_pool(request)
+    results = []
+    async with pool.acquire() as conn:
+        found = await conn.fetchval("SELECT COUNT(*) FROM plays WHERE id=ANY($1::uuid[])", body.play_ids)
+        if found != len(set(body.play_ids)):
+            raise HTTPException(status_code=404, detail="one_or_more_plays_not_found")
+        async with conn.transaction():
+            for play_id in dict.fromkeys(body.play_ids):
+                for field, value in payload.items():
+                    await conn.execute(
+                        """
+                        INSERT INTO play_tag_votes (program_id,play_id,field,value,user_id,created_at)
+                        VALUES ($1,$2,$3,$4,$5,now())
+                        ON CONFLICT (program_id,play_id,field,user_id)
+                        DO UPDATE SET value=EXCLUDED.value,created_at=now()
+                        """,
+                        ctx.program_id, play_id, field, value, ctx.user_id,
+                    )
+                results.append({"play_id": play_id, **await recompute_play_resolution(conn, ctx.program_id, play_id)})
+    return {"count": len(results), "plays": results}
 
 
 @router.post("/week-plans", status_code=201)

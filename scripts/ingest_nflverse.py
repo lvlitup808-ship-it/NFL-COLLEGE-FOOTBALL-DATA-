@@ -49,6 +49,24 @@ async def ensure_program(conn: asyncpg.Connection) -> None:
     )
 
 
+async def register_source_ids(
+    conn: asyncpg.Connection,
+    kind: str,
+    rows: list[tuple[UUID, str, str | None]],
+) -> None:
+    """Record source identity only; tenant overrides remain separate rows."""
+    if not rows:
+        return
+    await conn.executemany(
+        """
+        INSERT INTO entity_ids (program_id,kind,canonical_id,source,external_id,label)
+        VALUES (NULL,$1,$2,$3,$4,$5)
+        ON CONFLICT DO NOTHING
+        """,
+        [(kind, canonical_id, SOURCE, external_id, label) for canonical_id, external_id, label in rows],
+    )
+
+
 async def flush_batch(
     conn: asyncpg.Connection,
     batch: list[dict[str, Any]],
@@ -209,6 +227,19 @@ async def flush_batch(
                 )
                 for row in batch
             ],
+        )
+
+        await register_source_ids(
+            conn, "team",
+            [(team_ids[code], code, code) for code in sorted(team_codes)],
+        )
+        await register_source_ids(
+            conn, "game",
+            [(stable_id("game", game_id), game_id, None) for game_id in game_rows],
+        )
+        await register_source_ids(
+            conn, "play",
+            [(stable_id("play", str(row["play_external_id"])), str(row["play_external_id"]), None) for row in batch],
         )
 
     updated = sum(1 for external_id in external_ids if external_id in existing_ids)
