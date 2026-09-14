@@ -1,4 +1,6 @@
-# FIELDMIND
+# FIELDMIND — Week-of-Game Pilot
+
+Repository-name mismatch: the GitHub repository is named `NFL-COLLEGE-FOOTBALL-DATA-`, but the product in this repository is FIELDMIND, not an NFL data portal.
 
 FIELDMIND is a week-of-game football decision system built around one atomic unit: the play. The locked pilot turns trusted staff film tags and play evidence into a Thursday call/do-not-call sheet with visible sample size, confidence, supporting plays, and raw evidence of which players have processed the relevant look.
 
@@ -48,6 +50,8 @@ PORT=8000 uvicorn app.pilot:app --host 0.0.0.0 --port 8000
 ```
 
 Open `http://127.0.0.1:8000/` for the four pilot screens.
+
+For the one-command container path and four-seat demo setup, use `docs/SHIP_TONIGHT.md`.
 
 Liveness:
 
