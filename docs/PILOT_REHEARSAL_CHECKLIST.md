@@ -1,5 +1,15 @@
 # FIELDMIND Rehearsal — One Opponent Week Slice
 
+## Run This in 90 Minutes
+
+- Minutes 0–10: confirm rights, browser/OS, four seats, 20 play links, and the authorized film source.
+- Minutes 10–45: GA A and GA B blind-tag all 20 plays; record each elapsed time and any surviving `prompt()`.
+- Minutes 45–60: filter one situation cut, record `n`, verify facets, and open the current-result clip bay.
+- Minutes 60–70: test J/K/L, the authorized link or fallback, and save/reload three telestrations.
+- Minutes 70–82: copy evidence IDs without hand editing and create one CALL or DO NOT CALL candidate.
+- Minutes 82–88: verify approval is blocked below `n=8`, then test the Thursday freeze with the coach.
+- Minutes 88–90: record total time, changed-a-call answer, exact blockers, workarounds, and the decision gate.
+
 Use this checklist for a single controlled 20-play rehearsal before showing the pilot to another staff. Record observed results and exact workarounds; do not convert an untested capability into a claim.
 
 ## Session
