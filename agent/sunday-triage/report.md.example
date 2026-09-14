@@ -1,0 +1,37 @@
+# Sunday Source-Triage Report
+
+- Season:
+- Week:
+- Source:
+- Retry count:
+
+## FACT
+
+- n_plays:
+- n_unknown_family:
+- n_unknown_formation:
+- n_missing_external_id:
+- duplicate_external_id:
+- source_play_class_promoted_to_play_family:
+- trusted_tag_write_in_ingest_code:
+
+## Ingest Runs
+
+- Status:
+- Week attribution:
+
+## Hard Fails
+
+## ASSUMPTION
+
+## Stop-Condition Checklist
+
+- [ ] Applicable ingest status copied
+- [ ] `n_plays` is an integer
+- [ ] `n_unknown_family` is an integer
+- [ ] `n_unknown_formation` is an integer
+- [ ] `n_missing_external_id` is an integer
+- [ ] `hard_fails[]` emitted
+- [ ] No trusted-tag writes
+- [ ] No raw feed dump
+- [ ] Retries no greater than `2`

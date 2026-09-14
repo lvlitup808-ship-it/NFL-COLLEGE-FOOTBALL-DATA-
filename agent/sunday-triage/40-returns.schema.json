@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FIELDMIND Sunday Source-Triage Proposed Return",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "season",
+    "week",
+    "source",
+    "n_plays",
+    "n_unknown_family",
+    "n_unknown_formation",
+    "n_missing_external_id",
+    "hard_fails",
+    "report_path",
+    "verdict",
+    "retry_reason"
+  ],
+  "properties": {
+    "season": {"type": "integer", "minimum": 0},
+    "week": {"type": "integer", "minimum": 0},
+    "source": {"type": "string", "enum": ["cfbd", "nflverse"]},
+    "n_plays": {"type": "integer", "minimum": 0},
+    "n_unknown_family": {"type": "integer", "minimum": 0},
+    "n_unknown_formation": {"type": "integer", "minimum": 0},
+    "n_missing_external_id": {"type": "integer", "minimum": 0},
+    "hard_fails": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "report_path": {
+      "type": "string",
+      "const": "agent/sunday-triage/report.md"
+    },
+    "verdict": {"type": "string", "enum": ["pass", "fail", "retry"]},
+    "retry_reason": {"type": ["string", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"verdict": {"const": "pass"}}, "required": ["verdict"]},
+      "then": {
+        "properties": {
+          "hard_fails": {"maxItems": 0},
+          "retry_reason": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"verdict": {"const": "fail"}}, "required": ["verdict"]},
+      "then": {
+        "properties": {
+          "hard_fails": {"minItems": 1},
+          "retry_reason": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"verdict": {"const": "retry"}}, "required": ["verdict"]},
+      "then": {
+        "properties": {"retry_reason": {"type": "string", "minLength": 1}}
+      }
+    }
+  ]
+}
