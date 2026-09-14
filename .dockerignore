@@ -1,0 +1,21 @@
+# Keep secrets out of image layers. Runtime config comes from platform env vars.
+.env
+.env.*
+!.env.example
+
+# Version control and CI metadata are not needed at runtime.
+.git
+.gitignore
+.github
+
+# Local caches and build artifacts.
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.coverage
+htmlcov
+.DS_Store
+
+# Local-only orchestration.
+docker-compose.yml

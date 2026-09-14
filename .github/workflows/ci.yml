@@ -29,7 +29,29 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.lock
+      - name: Verify lockfile satisfies declared ranges
+        run: |
+          # Guards against requirements.txt and requirements.lock drifting apart:
+          # the lock is what ships, so it must still meet the declared ranges.
+          python - <<'PY'
+          from importlib.metadata import version
+          from packaging.requirements import Requirement
+
+          problems = []
+          for raw in open("requirements.txt"):
+              raw = raw.split("#")[0].strip()
+              if not raw:
+                  continue
+              req = Requirement(raw)
+              installed = version(req.name)
+              if not req.specifier.contains(installed, prereleases=True):
+                  problems.append(f"{req.name}: locked {installed} violates '{req.specifier}'")
+              else:
+                  print(f"ok  {req.name}=={installed} satisfies '{req.specifier}'")
+          if problems:
+              raise SystemExit("lockfile drift:\n  " + "\n  ".join(problems))
+          PY
       - name: Compile Python entrypoints
         run: >-
           python -m py_compile
@@ -112,9 +134,31 @@ jobs:
           ready_code=$(curl -sS -o /tmp/ready.json -w '%{http_code}' http://127.0.0.1:8000/ready)
           test "$ready_code" = "503"
           grep -q '"status":"not_ready"' /tmp/ready.json
+      - name: Smoke Railway start command with PORT unset
+        run: |
+          # Railway's startCommand overrides the Dockerfile CMD, so it needs its
+          # own boot check. PORT is left unset here on purpose: the platform does
+          # not always inject it, and a missing default crash-loops the deploy.
+          start_cmd=$(python -c "import json; print(json.load(open('railway.json'))['deploy']['startCommand'])")
+          docker run -d --name fieldmind-railway -p 8001:8000 --entrypoint sh fieldmind-ci -c "$start_cmd"
+          boot_ok=0
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8001/health > /tmp/railway_health.json; then
+              boot_ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$boot_ok" -ne 1 ]; then
+            docker logs fieldmind-railway
+            exit 1
+          fi
+          grep -q '"status":"ok"' /tmp/railway_health.json
       - name: Container logs on failure
         if: failure()
-        run: docker logs fieldmind-ci || true
-      - name: Remove smoke container
+        run: |
+          docker logs fieldmind-ci || true
+          docker logs fieldmind-railway || true
+      - name: Remove smoke containers
         if: always()
-        run: docker rm -f fieldmind-ci || true
+        run: docker rm -f fieldmind-ci fieldmind-railway || true
