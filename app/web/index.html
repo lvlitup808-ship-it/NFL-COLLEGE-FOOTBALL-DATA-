@@ -4,16 +4,143 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FIELDMIND</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/tokens.css">
 <style>
-:root{font-family:Inter,system-ui,sans-serif;color:#111;background:#f6f6f3}*{box-sizing:border-box}body{margin:0}header{background:#111;color:#fff;padding:18px 22px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}header b{font-size:22px;letter-spacing:.06em}.auth{display:flex;gap:8px;flex:1;flex-wrap:wrap}.auth input{min-width:230px}main{max-width:1400px;margin:auto;padding:20px}input,select,button,textarea{font:inherit;padding:9px;border:1px solid #bbb;border-radius:6px;background:#fff}button{cursor:pointer;font-weight:650}.tabs,.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tabs{margin:16px 0}.tabs button.active{background:#111;color:#fff}.panel{display:none}.panel.active{display:block}.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:16px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #e5e5e5;padding:8px;text-align:left;vertical-align:top}th{position:sticky;top:0;background:#fff}.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#eee;font-size:11px}.usable,.agreed{background:#dff3df}.directional,.partial{background:#fff0be}.insufficient{background:#f5dada}.approved{background:#dff3df}.candidate{background:#fff0be}.rejected,.untagged{background:#eee}.overridden{background:#dce9ff}.muted{color:#666;font-size:13px}.danger,.freeze{color:#8a1717;font-weight:750}.decision{border-left:5px solid #111;padding-left:12px}.two-line{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:220px}.drawer{display:none;border-left:6px solid #111}.drawer.open{display:block}.video-box{position:relative;background:#090909;max-width:960px;aspect-ratio:16/9;display:grid;place-items:center}.video-box video{width:100%;height:100%;object-fit:contain}.video-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}.film-chip{background:#dce9ff}.filters-advanced{margin-top:10px}.tag-editor{margin-top:12px;padding-top:12px;border-top:1px solid #ddd}pre{white-space:pre-wrap;word-break:break-word;background:#101010;color:#eee;padding:12px;border-radius:8px;max-height:300px;overflow:auto}h2{margin:4px 0 12px}h3{margin:0 0 10px}
+/* FIELDMIND pilot UI, skinned to the A-WARE token system.
+   Class names are unchanged: every selector here matches markup the existing
+   JS already renders, so no product logic moved. */
+
+*{box-sizing:border-box}
+html{background:var(--parchment)}
+body{margin:0;background:var(--parchment);color:var(--ink);
+  font-family:var(--body);font-size:var(--body-size);line-height:1.55;
+  letter-spacing:var(--body-tracking);-webkit-font-smoothing:antialiased}
+
+/* ---------- notice strip: the ONLY place --alpine appears ---------- */
+.notice{background:var(--alpine);color:var(--canvas);height:12px;
+  display:flex;align-items:center;padding:0 22px;
+  font-family:var(--lab-mono);font-size:9px;line-height:1;
+  text-transform:uppercase;letter-spacing:var(--lab-tracking);white-space:nowrap;overflow:hidden}
+
+/* ---------- masthead / token login ---------- */
+header{background:var(--canvas);border-bottom:var(--rule);
+  padding:22px;display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap}
+header b{font-family:var(--display);font-weight:300;font-size:44px;line-height:.9;
+  letter-spacing:var(--display-tracking);display:block}
+.masthead{display:flex;flex-direction:column;gap:6px}
+.masthead .sub{font-size:14px;color:var(--graphite);letter-spacing:var(--body-tracking);max-width:46ch}
+.auth{display:flex;gap:10px;flex:1;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field > span{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--graphite)}
+.auth input{min-width:210px}
+
+main{max-width:var(--page-max);margin:auto;padding:var(--section-gap) 22px var(--section-gap-lg);
+  display:flex;flex-direction:column;gap:24px}
+
+/* ---------- controls ---------- */
+input,select,textarea{font:inherit;letter-spacing:var(--body-tracking);
+  padding:10px 12px;border:1px solid var(--linen);border-radius:6px;
+  background:var(--parchment);color:var(--ink)}
+input::placeholder,textarea::placeholder{color:var(--stone)}
+input:focus,select:focus,textarea:focus{border-color:var(--ink)}
+label{font-size:14px;color:var(--graphite);display:inline-flex;align-items:center;gap:7px}
+
+.tabs,.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tabs{margin:calc(var(--section-gap) - 24px) 0 0;gap:8px}
+.tabs button{border-color:var(--linen);color:var(--graphite)}
+.tabs button::after{content:none}
+.tabs button.active{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+.panel{display:none}
+.panel.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.filters-advanced{margin-top:10px}
+
+h2{font-family:var(--display);font-weight:300;font-size:34px;line-height:1.05;
+  letter-spacing:var(--display-tracking);margin:0 0 18px;text-wrap:balance}
+h3{font-family:var(--lab-mono);font-size:12px;font-weight:500;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--graphite);margin:0 0 16px}
+.muted{color:var(--stone);font-size:13px}
+
+/* ---------- play finder ---------- */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-family:var(--lab-mono);font-size:12px;font-weight:500;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--graphite);
+  position:sticky;top:0;background:var(--canvas);
+  border-bottom:var(--rule);padding:10px 10px 9px;text-align:left}
+td{border-bottom:var(--hairline);padding:14px 10px;text-align:left;vertical-align:top}
+tbody tr:hover td{background:var(--parchment)}
+td small{color:var(--stone);font-size:12px}
+.two-line{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;min-width:220px}
+.play-check{accent-color:var(--ink)}
+td button{padding:7px 13px}
+
+/* ---------- state tags: lab-mono 12/0.10em ---------- */
+.badge{display:inline-block;font-family:var(--lab-mono);font-size:12px;line-height:1.3;
+  text-transform:uppercase;letter-spacing:var(--lab-tracking);
+  padding:3px 9px;border:1px solid var(--linen);border-radius:3px;
+  color:var(--graphite);background:transparent;white-space:nowrap}
+.badge.agreed,.badge.usable,.badge.approved{border-color:var(--ink);color:var(--ink)}
+.badge.partial,.badge.directional,.badge.candidate{border-style:dashed;border-color:var(--graphite)}
+.badge.insufficient,.badge.rejected{color:var(--stone);border-color:var(--linen)}
+.badge.overridden,.badge.film-chip{border-color:var(--graphite);color:var(--graphite)}
+/* Diagonal stamp on untagged rows only. */
+.badge.untagged{transform:rotate(-10deg);transform-origin:left center;
+  border-style:dashed;border-color:var(--stone);color:var(--stone)}
+
+/* ---------- decisions / call sheet ---------- */
+.decision{border-left:2px solid var(--ink);padding-left:16px}
+/* CALL / DO NOT CALL / IF THEN render as static ghost pills, not buttons. */
+.decision .row b{display:inline-flex;align-items:center;
+  font-family:var(--lab-mono);font-size:12px;font-weight:500;
+  text-transform:uppercase;letter-spacing:var(--pill-tracking);
+  border:1px solid var(--ink);border-radius:var(--pill-radius);
+  padding:5px 14px;color:var(--ink)}
+.decision h3{font-family:var(--display);font-weight:300;font-size:26px;
+  letter-spacing:var(--display-tracking);text-transform:none;color:var(--ink);margin:12px 0 8px}
+.danger{color:var(--ink);font-weight:600}
+
+/* ---------- the single bronze seal: frozen sheet only ---------- */
+#freezeState:not(:empty){font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--bronze);
+  border:1px solid var(--bronze);border-radius:var(--pill-radius);padding:5px 14px}
+
+/* ---------- clip drawer ---------- */
+.drawer{display:none;background:var(--parchment);border:var(--hairline);border-left:2px solid var(--ink)}
+.drawer.open{display:block}
+.video-box{position:relative;background:var(--ink);border:1px solid var(--ink);
+  max-width:960px;aspect-ratio:16/9;display:grid;place-items:center;max-width:100%}
+.video-box video{width:100%;height:100%;object-fit:contain}
+.video-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.shuttle-hint{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--graphite)}
+.tag-editor{margin-top:16px;padding-top:16px;border-top:var(--hairline)}
+
+/* ---------- system message ---------- */
+pre{white-space:pre-wrap;word-break:break-word;background:var(--linen);color:var(--graphite);
+  font-family:var(--lab-mono);font-size:12px;letter-spacing:0;line-height:1.6;
+  padding:16px;border-radius:6px;max-height:300px;overflow:auto}
+
+@media (max-width:720px){
+  header{padding:18px 16px}
+  header b{font-size:34px}
+  main{padding:40px 16px 64px}
+  .card{padding:20px}
+  .notice{padding:0 16px}
+}
 </style>
 </head>
 <body>
-<header><b>FIELDMIND</b><div class="auth"><input id="token" type="password" autocomplete="off" placeholder="Pilot bearer token"><input id="programId" placeholder="Program ID if multi-program"><input id="planId" placeholder="Active week plan ID"><button onclick="saveSession()">Use session</button></div></header>
+<div class="notice" role="note">Pilot. Two GAs tag. Coordinator freezes Thursday.</div>
+<header><div class="masthead"><b>FIELDMIND</b><span class="sub">Week-of-game call sheet. Source PBP is not a tendency.</span></div><div class="auth"><label class="field"><span>Bearer</span><input id="token" type="password" autocomplete="off" placeholder="Pilot bearer token"></label><label class="field"><span>Program</span><input id="programId" placeholder="Program ID if multi-program"></label><label class="field"><span>Week plan</span><input id="planId" placeholder="Active week plan ID"></label><button onclick="saveSession()">Enter</button></div></header>
 <main>
 <div class="card"><h3>Week setup</h3><div class="grid"><input id="teamName" placeholder="Our team name"><input id="teamId" placeholder="Optional source team UUID"><input id="season" type="number" value="2026"><input id="week" type="number" min="0" max="25" placeholder="Week"><input id="opponent" placeholder="Opponent"><select id="side"><option value="offense">Offense</option><option value="defense">Defense</option></select></div><div class="row" style="margin-top:10px"><button onclick="createPlan()">Create / update week plan</button><span class="muted">One plan controls the week-of-game decision loop.</span></div></div>
 <div class="tabs"><button class="active" onclick="tab('plays',this)">Play Finder</button><button onclick="tab('opponentPanel',this)">Opponent one-pager</button><button onclick="tab('selfPanel',this)">Self-scout</button><button onclick="tab('callPanel',this)">Call-sheet</button></div>
-<section id="plays" class="panel active"><div class="card"><h2>Play Finder</h2><div class="grid"><input id="fQ" placeholder="Search play text"><input id="fOffense" placeholder="Offense"><input id="fDefense" placeholder="Defense"><input id="fGame" placeholder="Game UUID"><input id="fSeason" type="number" placeholder="Season"><input id="fWeek" type="number" min="0" max="25" placeholder="Week"><select id="fDown"><option value="">Any down</option><option>1</option><option>2</option><option>3</option><option>4</option></select><select id="fDistanceBucket"><option value="">Any distance bucket</option><option>short</option><option>medium</option><option>long</option></select><select id="fFieldZone"><option value="">Any field zone</option><option>backed_up</option><option>open_field</option><option>plus</option><option>red_zone</option></select><select id="fFamily"><option value="">Any play family</option></select><select id="fFormation"><option value="">Any formation</option></select><select id="fMotion"><option value="">Any motion</option></select><select id="fCoverage"><option value="">Any coverage</option></select><select id="fPersonnel"><option value="">Any personnel</option></select></div><div class="grid filters-advanced"><select id="fSource"><option value="any">Any source</option><option>cfbd</option><option>nflverse</option><option>seed</option><option>fieldmind</option></select><select id="fSourceClass"><option value="">Any source class</option><option>pass</option><option>run</option></select><select id="fTagState"><option value="">Any tag state</option><option>untagged</option><option>partial</option><option>agreed</option><option>overridden</option></select><select id="fSuccess"><option value="">Any success</option><option value="true">Success</option><option value="false">Failure</option></select><select id="fExplosive"><option value="">Any explosive</option><option value="true">Explosive</option><option value="false">Not explosive</option></select><select id="fTurnover"><option value="">Any turnover</option><option value="true">Turnover</option><option value="false">No turnover</option></select><select id="fFilm"><option value="">Any film state</option><option value="true">Has film</option><option value="false">No film</option></select><label><input id="fExcludeUnknown" type="checkbox"> Exclude UNKNOWN families</label><input id="fMinYards" type="number" placeholder="Min yards"><input id="fMaxYards" type="number" placeholder="Max yards"><input id="fMinDistance" type="number" min="0" placeholder="Min distance"><input id="fMaxDistance" type="number" min="0" placeholder="Max distance"><select id="fSort"><option value="sequence">Sequence</option><option value="epa_desc">EPA / PPA</option><option value="yards_desc">Yards</option><option value="recent_tag">Recent tag</option></select></div><div class="row" style="margin-top:10px"><button onclick="loadPlays()">Find plays</button><button onclick="loadAgreement()">Tag agreement</button><button onclick="copyEvidence()">Copy selected to Call-sheet</button><input id="searchName" placeholder="Saved search name"><button onclick="saveSearch()">Save</button><select id="savedSearches" onchange="loadSavedSearch()"><option value="">Load saved search</option></select><span id="playCount" class="muted"></span></div></div><div class="card" style="overflow:auto;max-height:620px"><table><thead><tr><th></th><th>Situation</th><th>Play</th><th>SOURCE</th><th>TRUSTED tags</th><th>Value</th><th>State</th><th></th></tr></thead><tbody id="playsBody"></tbody></table></div><div id="emptyFinder" class="card" style="display:none">Public PBP is loaded but nothing is trusted yet. Two GAs must tag before families are tendencies.</div><div id="clipDrawer" class="card drawer"><div class="row"><h3 id="clipTitle">Clip bay</h3><button onclick="shuttleClip(-1)">Previous</button><button onclick="shuttleClip(1)">Next</button><span id="clipPosition" class="muted"></span><button onclick="closeClip()">Close</button><span class="muted">J −2s · K play/pause · L +2s · hold L 2× · Shift+J/L 1 frame</span></div><div id="clipAttach"></div><div class="video-box" id="videoBox"><video id="clipVideo" controls playsinline></video><canvas id="drawCanvas"></canvas></div><div class="row" style="margin-top:10px"><input id="strokeColor" type="color" value="#ff2b2b"><input id="strokeWidth" type="number" min="1" max="40" value="5"><button onclick="undoStroke()">Undo</button><button onclick="clearStrokes()">Clear</button><button onclick="saveOverlay()">Save overlay</button></div><div id="tagEditor" class="tag-editor"></div></div><div id="agreement"></div></section>
+<section id="plays" class="panel active"><div class="card"><h2>Play Finder</h2><div class="grid"><input id="fQ" placeholder="Search play text"><input id="fOffense" placeholder="Offense"><input id="fDefense" placeholder="Defense"><input id="fGame" placeholder="Game UUID"><input id="fSeason" type="number" placeholder="Season"><input id="fWeek" type="number" min="0" max="25" placeholder="Week"><select id="fDown"><option value="">Any down</option><option>1</option><option>2</option><option>3</option><option>4</option></select><select id="fDistanceBucket"><option value="">Any distance bucket</option><option>short</option><option>medium</option><option>long</option></select><select id="fFieldZone"><option value="">Any field zone</option><option>backed_up</option><option>open_field</option><option>plus</option><option>red_zone</option></select><select id="fFamily"><option value="">Any play family</option></select><select id="fFormation"><option value="">Any formation</option></select><select id="fMotion"><option value="">Any motion</option></select><select id="fCoverage"><option value="">Any coverage</option></select><select id="fPersonnel"><option value="">Any personnel</option></select></div><div class="grid filters-advanced"><select id="fSource"><option value="any">Any source</option><option>cfbd</option><option>nflverse</option><option>seed</option><option>fieldmind</option></select><select id="fSourceClass"><option value="">Any source class</option><option>pass</option><option>run</option></select><select id="fTagState"><option value="">Any tag state</option><option>untagged</option><option>partial</option><option>agreed</option><option>overridden</option></select><select id="fSuccess"><option value="">Any success</option><option value="true">Success</option><option value="false">Failure</option></select><select id="fExplosive"><option value="">Any explosive</option><option value="true">Explosive</option><option value="false">Not explosive</option></select><select id="fTurnover"><option value="">Any turnover</option><option value="true">Turnover</option><option value="false">No turnover</option></select><select id="fFilm"><option value="">Any film state</option><option value="true">Has film</option><option value="false">No film</option></select><label><input id="fExcludeUnknown" type="checkbox"> Exclude UNKNOWN families</label><input id="fMinYards" type="number" placeholder="Min yards"><input id="fMaxYards" type="number" placeholder="Max yards"><input id="fMinDistance" type="number" min="0" placeholder="Min distance"><input id="fMaxDistance" type="number" min="0" placeholder="Max distance"><select id="fSort"><option value="sequence">Sequence</option><option value="epa_desc">EPA / PPA</option><option value="yards_desc">Yards</option><option value="recent_tag">Recent tag</option></select></div><div class="row" style="margin-top:10px"><button onclick="loadPlays()">Find plays</button><button onclick="loadAgreement()">Tag agreement</button><button onclick="copyEvidence()">Copy selected to Call-sheet</button><input id="searchName" placeholder="Saved search name"><button onclick="saveSearch()">Save</button><select id="savedSearches" onchange="loadSavedSearch()"><option value="">Load saved search</option></select><span id="playCount" class="muted"></span></div></div><div class="card" style="overflow:auto;max-height:620px"><table><thead><tr><th></th><th>Situation</th><th>Play</th><th>SOURCE</th><th>TRUSTED tags</th><th>Value</th><th>State</th><th></th></tr></thead><tbody id="playsBody"></tbody></table></div><div id="emptyFinder" class="card" style="display:none">Public PBP is loaded but nothing is trusted yet. Two GAs must tag before families are tendencies.</div><div id="clipDrawer" class="card drawer"><div class="row"><h3 id="clipTitle">Clip bay</h3><button onclick="shuttleClip(-1)">Previous</button><button onclick="shuttleClip(1)">Next</button><span id="clipPosition" class="muted"></span><button onclick="closeClip()">Close</button><span class="shuttle-hint">J −2s · K play/pause · L +2s · hold L 2× · Shift+J/L 1 frame</span></div><div id="clipAttach"></div><div class="video-box" id="videoBox"><video id="clipVideo" controls playsinline></video><canvas id="drawCanvas"></canvas></div><div class="row" style="margin-top:10px"><input id="strokeColor" type="color" value="#ff2b2b"><input id="strokeWidth" type="number" min="1" max="40" value="5"><button onclick="undoStroke()">Undo</button><button onclick="clearStrokes()">Clear</button><button onclick="saveOverlay()">Save overlay</button></div><div id="tagEditor" class="tag-editor"></div></div><div id="agreement"></div></section>
 <section id="opponentPanel" class="panel"><div class="card"><h2>Opponent one-pager</h2><div class="row"><button onclick="loadOpponent()">Refresh</button><span class="muted">n&lt;8 is a question, never a game-plan fact.</span></div></div><div id="opponentCards"></div></section>
 <section id="selfPanel" class="panel"><div class="card"><h2>Self-scout</h2><div class="row"><button onclick="loadSelf()">Refresh</button><span class="muted">What are we repeatedly putting on film?</span></div></div><div id="selfCards"></div></section>
 <section id="callPanel" class="panel">

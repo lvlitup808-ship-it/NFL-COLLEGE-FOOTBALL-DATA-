@@ -31,9 +31,22 @@ app.router.routes = [
 app.include_router(wedge_router)
 app.include_router(wedge_extra_router)
 
-WEB_INDEX = Path(__file__).with_name("web") / "index.html"
+WEB_DIR = Path(__file__).with_name("web")
+WEB_INDEX = WEB_DIR / "index.html"
 
 
 @app.get("/", include_in_schema=False)
 async def pilot_ui():
     return FileResponse(WEB_INDEX)
+
+
+# Static assets for the pilot UI and the public one-pager. These serve files
+# only; no API surface, tenancy, or vocabulary is involved.
+@app.get("/tokens.css", include_in_schema=False)
+async def design_tokens():
+    return FileResponse(WEB_DIR / "tokens.css", media_type="text/css")
+
+
+@app.get("/landing", include_in_schema=False)
+async def landing():
+    return FileResponse(WEB_DIR / "landing.html")

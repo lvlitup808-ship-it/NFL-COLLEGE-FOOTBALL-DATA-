@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FIELDMIND</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/tokens.css">
+<style>
+*{box-sizing:border-box}
+html{background:var(--parchment)}
+body{margin:0;background:var(--parchment);color:var(--ink);
+  font-family:var(--body);font-size:var(--body-size);line-height:1.55;
+  letter-spacing:var(--body-tracking);-webkit-font-smoothing:antialiased}
+
+/* The ONLY --alpine surface in the system. */
+.notice{background:var(--alpine);color:var(--canvas);height:12px;
+  display:flex;align-items:center;padding:0 22px;
+  font-family:var(--lab-mono);font-size:9px;line-height:1;
+  text-transform:uppercase;letter-spacing:var(--lab-tracking);
+  white-space:nowrap;overflow:hidden}
+
+/* ---------------------------------------------------------------
+   HERO IMAGE SWAP POINT
+   Set --hero-image to a file you hold the rights to and it becomes a
+   full-bleed 64vh plate under the white type. No gradient wash is applied.
+   Left unset, the hero is a plain ink field, which is the shipped state.
+       .hero{--hero-image:url("/static/hero.jpg")}
+   --------------------------------------------------------------- */
+.hero{--hero-image:none;
+  position:relative;min-height:64vh;display:flex;align-items:flex-end;
+  background-color:var(--ink);background-image:var(--hero-image);
+  background-size:cover;background-position:50% 32%;
+  padding:0 22px 56px;overflow:hidden}
+.hero-inner{max-width:var(--page-max);margin:0 auto;width:100%;
+  display:flex;flex-direction:column;gap:18px}
+.wordmark{font-family:var(--display);font-weight:300;font-size:88px;line-height:.86;
+  letter-spacing:var(--display-tracking);color:var(--canvas);margin:0;text-wrap:balance}
+.hero .sub{color:var(--canvas);font-size:19px;max-width:44ch;margin:0;opacity:.94}
+.hero .eyebrow{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--canvas);opacity:.72}
+.hero .pill{border-color:var(--canvas);color:var(--canvas);align-self:flex-start;
+  text-decoration:none;margin-top:10px}
+.hero .pill:hover{background:var(--canvas);color:var(--ink)}
+
+main{max-width:var(--page-max);margin:auto;padding:var(--section-gap) 22px var(--section-gap-lg);
+  display:flex;flex-direction:column;gap:var(--section-gap-lg)}
+section{display:flex;flex-direction:column;gap:24px}
+.eyebrow{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--graphite);margin:0}
+h2{font-family:var(--display);font-weight:300;font-size:40px;line-height:1.05;
+  letter-spacing:var(--display-tracking);margin:0;max-width:22ch;text-wrap:balance}
+p{margin:0;max-width:64ch}
+
+/* Three facts. Numbered because the pilot week runs in this order. */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.fact{background:var(--canvas);border:var(--hairline);border-radius:var(--card-radius);
+  padding:var(--card-pad);display:flex;flex-direction:column;gap:12px}
+.fact .step{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--stone)}
+.fact .figure{font-family:var(--display);font-weight:300;font-size:52px;line-height:.95;
+  letter-spacing:var(--display-tracking)}
+.fact p{font-size:15px;color:var(--graphite)}
+
+.refuse{background:var(--linen);border-radius:var(--card-radius);padding:var(--card-pad);
+  display:flex;flex-direction:column;gap:14px}
+.refuse ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:10px}
+.refuse li{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--graphite);
+  border:1px solid var(--stone);border-radius:3px;padding:5px 11px}
+
+.price{display:flex;flex-direction:column;gap:10px}
+.price .amount{font-family:var(--display);font-weight:300;font-size:56px;line-height:1;
+  letter-spacing:var(--display-tracking)}
+.price .terms{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--graphite)}
+.price .caveat{font-size:14px;color:var(--stone);max-width:60ch}
+
+.start{display:flex;flex-direction:column;gap:0}
+.start li{display:grid;grid-template-columns:64px 1fr;gap:20px;align-items:start;
+  padding:22px 0;border-top:var(--hairline)}
+.start li:last-child{border-bottom:var(--hairline)}
+.start ol{margin:0;padding:0;list-style:none}
+.start .n{font-family:var(--lab-mono);font-size:12px;letter-spacing:var(--lab-tracking);
+  color:var(--stone);padding-top:3px}
+.start p{font-size:15px}
+
+footer{border-top:var(--rule);padding:28px 22px 56px}
+.footer-inner{max-width:var(--page-max);margin:auto;display:flex;gap:16px;
+  justify-content:space-between;flex-wrap:wrap;
+  font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:var(--lab-tracking);color:var(--stone)}
+
+@media (max-width:720px){
+  .hero{min-height:60vh;padding:0 16px 40px}
+  .wordmark{font-size:56px}
+  .hero .sub{font-size:17px}
+  h2{font-size:30px}
+  main{padding:48px 16px 64px;gap:64px}
+  .notice{padding:0 16px}
+  .start li{grid-template-columns:1fr;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="notice" role="note">Pilot. Two GAs tag. Coordinator freezes Thursday.</div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Week-of-game decision tool</p>
+    <h1 class="wordmark">FIELDMIND</h1>
+    <p class="sub">Week-of-game call sheet. Source PBP is not a tendency.</p>
+    <a class="pill" href="#start">Request pilot</a>
+  </div>
+</header>
+
+<main>
+
+  <section>
+    <p class="eyebrow">What holds the sheet up</p>
+    <h2>Three constraints, enforced in the product.</h2>
+    <div class="facts">
+      <div class="fact">
+        <span class="step">Vocabulary</span>
+        <span class="figure">40</span>
+        <p>A closed vocabulary of 40 terms across play family, formation, motion, coverage and personnel. Nothing outside the list can be written to a play.</p>
+      </div>
+      <div class="fact">
+        <span class="step">Tagging</span>
+        <span class="figure">2 GAs</span>
+        <p>Two blind taggers are required per play. Field and term agreement must reach 80% on calibration, or the term is removed from the vocabulary.</p>
+      </div>
+      <div class="fact">
+        <span class="step">Freeze</span>
+        <span class="figure">Thursday</span>
+        <p>The coordinator freezes the Thursday sheet. Once frozen, decision rules and player-look evidence become immutable.</p>
+      </div>
+    </div>
+    <p>Public play-by-play arrives as source rows and stays that way. It is never promoted into a formation, coverage, motion or play family on its own — a tendency exists only where two humans agreed on the film.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">What this is not</p>
+    <h2>The boundary is part of the product.</h2>
+    <div class="refuse">
+      <ul>
+        <li>Not Hudl</li>
+        <li>Not PFF</li>
+        <li>Not a data API</li>
+        <li>No raw CFBD or nflverse export</li>
+      </ul>
+      <p>Film stays with the customer. FIELDMIND holds authorized links and normalized telestration coordinates, not video. There is no public data portal, no feed redistribution, and no automated inference of coverage, concept, personnel, formation, motion or play family from public play-by-play.</p>
+    </div>
+  </section>
+
+  <section class="price">
+    <p class="eyebrow">Pilot offer</p>
+    <span class="amount">$3,000</span>
+    <span class="terms">Six game weeks · Three seats</span>
+    <p class="caveat">Working pilot price, carried from the repository offer sheet. The founder confirms it before the offer goes out; no paid customer price is in evidence.</p>
+  </section>
+
+  <section class="start" id="start">
+    <p class="eyebrow">How a program starts</p>
+    <h2>Three steps to a frozen sheet.</h2>
+    <ol>
+      <li>
+        <span class="n">01</span>
+        <p>Provision one program owner, then add the coach and two GA memberships to the same program.</p>
+      </li>
+      <li>
+        <span class="n">02</span>
+        <p>Run the controlled 20-play rehearsal with authorized film links, blind tagging, Finder verification, and exact blocker notes.</p>
+      </li>
+      <li>
+        <span class="n">03</span>
+        <p>Create evidence-backed call decisions, verify the n=8 approval guard, and have the coach freeze the Thursday sheet.</p>
+      </li>
+    </ol>
+  </section>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <span>FIELDMIND</span>
+    <span>Pilot programs only</span>
+  </div>
+</footer>
+
+</body>
+</html>
