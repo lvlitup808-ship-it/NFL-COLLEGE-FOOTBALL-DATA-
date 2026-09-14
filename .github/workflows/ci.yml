@@ -112,9 +112,31 @@ jobs:
           ready_code=$(curl -sS -o /tmp/ready.json -w '%{http_code}' http://127.0.0.1:8000/ready)
           test "$ready_code" = "503"
           grep -q '"status":"not_ready"' /tmp/ready.json
+      - name: Smoke Railway start command with PORT unset
+        run: |
+          # Railway's startCommand overrides the Dockerfile CMD, so it needs its
+          # own boot check. PORT is left unset here on purpose: the platform does
+          # not always inject it, and a missing default crash-loops the deploy.
+          start_cmd=$(python -c "import json; print(json.load(open('railway.json'))['deploy']['startCommand'])")
+          docker run -d --name fieldmind-railway -p 8001:8000 --entrypoint sh fieldmind-ci -c "$start_cmd"
+          boot_ok=0
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8001/health > /tmp/railway_health.json; then
+              boot_ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$boot_ok" -ne 1 ]; then
+            docker logs fieldmind-railway
+            exit 1
+          fi
+          grep -q '"status":"ok"' /tmp/railway_health.json
       - name: Container logs on failure
         if: failure()
-        run: docker logs fieldmind-ci || true
-      - name: Remove smoke container
+        run: |
+          docker logs fieldmind-ci || true
+          docker logs fieldmind-railway || true
+      - name: Remove smoke containers
         if: always()
-        run: docker rm -f fieldmind-ci || true
+        run: docker rm -f fieldmind-ci fieldmind-railway || true
