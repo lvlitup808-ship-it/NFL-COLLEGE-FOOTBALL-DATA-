@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "period": "per_run",
+  "tokens": 200000,
+  "tool_calls": 80,
+  "usd": 2.00,
+  "wall_clock_sec": 900,
+  "halt_file": "HALT.md",
+  "on_missing": "halt_before_expensive"
+}

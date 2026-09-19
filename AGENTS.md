@@ -31,6 +31,20 @@ fence in that turn.
 
 ---
 
+## SILENCE amendment — harness skills
+
+Supplied by the human owner. Amends constraint 5 (SILENCE) in the expanded
+form below, which is quoted verbatim and therefore left unedited. Where the
+two differ, this amendment governs.
+
+> Harness skills (code-review, security-review, artifact-design, docs, etc.)
+> are available IFF they shipped with this session.
+> `.agents/skills/` is the only place *custom* skills may be added.
+> A harness skill may not grant a one-way door.
+> If a harness skill and this file conflict, this file wins.
+
+---
+
 ## Expanded form
 
 > # Control plane. Not a prompt. Not a vibe.
@@ -92,15 +106,13 @@ fence in that turn.
 
 ---
 
-## Unresolved by the owner
+## Resolved by the owner
 
-These are recorded, not decided. An agent does not fill them in.
-
-- `.agents/budget.json` does not exist. BUDGET names tokens, tool calls,
-  dollars and wall clock, and instructs an agent to "assume the conservative
-  default" — but no default is stated. Until the owner supplies caps, the
-  halt threshold is undefined and BUDGET is unenforceable.
-- `.agents/skills/` does not exist. Read literally, SILENCE makes zero skills
-  available while the host harness loads its own. Whether this file overrides
-  the harness roster is the owner's call.
-- `AGENTS.local.md` does not exist. No local tightening is in effect.
+- BUDGET caps are set. `.agents/budget.json` holds the owner's JSON verbatim.
+  That file is the only permitted contents of `.agents/`.
+- The SILENCE / harness-skills conflict is settled by the amendment above.
+- `AGENTS.local.md` is deliberately absent from this repository. The owner
+  keeps it on their laptop. It tightens what is written here and can never
+  add a door, a tool, or budget, so an agent reading only this repository is
+  reading the looser of the two planes and must expect the local file to
+  forbid more. Do not recreate it here.
