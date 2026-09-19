@@ -30,6 +30,12 @@ TAG_FIELDS = tuple(VOCAB.keys())
 WRITE_ROLES = {"owner", "coach", "ga"}
 COACH_ROLES = {"owner", "coach"}
 
+# Mirrors call_rules_approved_evidence_check in
+# db/migrations/004_decision_guard.sql. The database is still the authority;
+# these exist so the guard answers 422 instead of an opaque 500.
+MIN_APPROVAL_N = 8
+APPROVAL_CONFIDENCE = {"directional", "usable"}
+
 
 def require_pool(request: Request) -> asyncpg.Pool:
     pool = request.app.state.db.pool
@@ -1002,6 +1008,8 @@ async def create_call_rule(
     rule_id = uuid.uuid4()
     async with pool.acquire() as conn:
         plan = await owned_week_plan(conn, week_plan_id, ctx)
+        if plan["status"] == "frozen":
+            raise HTTPException(status_code=409, detail="week_plan_frozen")
         row = await conn.fetchrow(
             """
             INSERT INTO call_rules (
@@ -1034,6 +1042,16 @@ async def patch_call_rule(
         plan = await owned_week_plan(conn, week_plan_id, ctx)
         if plan["status"] == "frozen":
             raise HTTPException(status_code=409, detail="week_plan_frozen")
+        if changes.get("status") == "approved":
+            current = await conn.fetchrow(
+                "SELECT sample_n, confidence FROM call_rules WHERE id=$1 AND week_plan_id=$2 AND program_id=$3",
+                rule_id, week_plan_id, ctx.program_id,
+            )
+            if not current:
+                raise HTTPException(status_code=404, detail="call_rule_not_found")
+            confidence = changes.get("confidence", current["confidence"])
+            if current["sample_n"] < MIN_APPROVAL_N or confidence not in APPROVAL_CONFIDENCE:
+                raise HTTPException(status_code=422, detail="approval_evidence_insufficient")
         allowed = {"status", "situation", "call_name", "reason", "priority", "confidence", "evidence_play_ids"}
         sets, args = [], [rule_id, week_plan_id, ctx.program_id]
         for key, value in changes.items():
@@ -1069,7 +1087,9 @@ async def create_player_evidence(
     pool = require_pool(request)
     evidence_id = uuid.uuid4()
     async with pool.acquire() as conn:
-        await owned_week_plan(conn, week_plan_id, ctx)
+        plan = await owned_week_plan(conn, week_plan_id, ctx)
+        if plan["status"] == "frozen":
+            raise HTTPException(status_code=409, detail="week_plan_frozen")
         if not await conn.fetchval("SELECT 1 FROM players WHERE id=$1", body.player_id):
             raise HTTPException(status_code=422, detail="player_id_not_found")
         row = await conn.fetchrow(
