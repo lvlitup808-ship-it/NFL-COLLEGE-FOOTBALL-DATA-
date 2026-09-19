@@ -9,142 +9,215 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/tokens.css">
 <style>
-/* FIELDMIND pilot UI, skinned to the A-WARE token system.
-   Class names are unchanged: every selector here matches markup the existing
-   JS already renders, so no product logic moved. */
+/* FIELDMIND workstation. Dark console skin over the existing pilot markup:
+   every selector here matches markup the JS already renders, plus the four
+   new shell panes (event rail, evidence rail, play tape, schematic). */
 
 *{box-sizing:border-box}
-html{background:var(--parchment)}
-body{margin:0;background:var(--parchment);color:var(--ink);
-  font-family:var(--body);font-size:var(--body-size);line-height:1.55;
-  letter-spacing:var(--body-tracking);-webkit-font-smoothing:antialiased}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
 
-/* ---------- notice strip: the ONLY place --alpine appears ---------- */
-.notice{background:var(--alpine);color:var(--canvas);height:12px;
-  display:flex;align-items:center;padding:0 22px;
-  font-family:var(--lab-mono);font-size:9px;line-height:1;
-  text-transform:uppercase;letter-spacing:var(--lab-tracking);white-space:nowrap;overflow:hidden}
+/* ---------- notice strip ---------- */
+.notice{background:var(--bg-2);color:var(--muted);border-bottom:1px solid var(--line);
+  padding:6px 18px;font-family:var(--mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.10em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* ---------- masthead / token login ---------- */
-header{background:var(--canvas);border-bottom:var(--rule);
-  padding:22px;display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap}
-header b{font-family:var(--display);font-weight:300;font-size:44px;line-height:.9;
-  letter-spacing:var(--display-tracking);display:block}
-.masthead{display:flex;flex-direction:column;gap:6px}
-.masthead .sub{font-size:14px;color:var(--graphite);letter-spacing:var(--body-tracking);max-width:46ch}
-.auth{display:flex;gap:10px;flex:1;flex-wrap:wrap;align-items:flex-end}
-.field{display:flex;flex-direction:column;gap:5px}
-.field > span{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
-  letter-spacing:var(--lab-tracking);color:var(--graphite)}
-.auth input{min-width:210px}
+/* ---------- top HUD ---------- */
+.hud{display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  padding:14px 18px;background:var(--bg-2);border-bottom:1px solid var(--line)}
+.hud b{font-family:var(--mono);font-size:17px;letter-spacing:.14em;color:var(--ink)}
+.hud-meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.hud-meta .v{color:var(--ink)}
+.auth{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field>span{font-family:var(--mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.10em;color:var(--muted)}
+.auth input{min-width:150px}
 
-main{max-width:var(--page-max);margin:auto;padding:var(--section-gap) 22px var(--section-gap-lg);
-  display:flex;flex-direction:column;gap:24px}
+/* the single --seal surface: frozen sheet only */
+#freezeState:not(:empty){font-family:var(--mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.10em;color:var(--seal);border:1px solid var(--seal);
+  border-radius:999px;padding:4px 11px;white-space:nowrap}
+
+/* ---------- three-pane workstation ---------- */
+.work{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr) var(--rail-w-r);
+  gap:14px;padding:14px 18px;align-items:start;max-width:1800px;margin:0 auto}
+.rail{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;position:sticky;top:14px}
+.rail>summary{cursor:pointer;list-style:none;padding:11px 14px;
+  font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.10em;
+  color:var(--muted);border-bottom:1px solid var(--line);display:flex;
+  justify-content:space-between;gap:8px;align-items:center}
+.rail>summary::-webkit-details-marker{display:none}
+.rail>summary::after{content:"\2212";color:var(--muted)}
+.rail:not([open])>summary::after{content:"+"}
+.rail-body{padding:12px 14px;max-height:calc(100vh - 160px);overflow:auto}
+.stage{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* ---------- left rail: countable event list ---------- */
+.evt{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;
+  padding:7px 6px;border-bottom:1px solid var(--line);cursor:pointer;
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+  background:none;border-left:0;border-right:0;border-top:0;width:100%;
+  text-align:left;border-radius:0;letter-spacing:.02em;text-transform:none}
+.evt:hover,.evt:focus-visible{background:#182029;border-color:var(--line)}
+.evt .seq{color:#5d6b76}
+.evt .sit{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evt.on{background:#1b242c}
+.evt.on .sit{color:var(--lime)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#3a4650}
+.dot.agreed{background:var(--lime)}
+.dot.partial{background:var(--amber)}
+.dot.overridden{background:var(--cyan)}
+.rail-count{font-family:var(--mono);font-size:10px;color:var(--muted);
+  padding:8px 6px 0;letter-spacing:.08em;text-transform:uppercase}
+
+/* ---------- right rail: evidence stack ---------- */
+.ev-n{font-family:var(--mono);font-size:56px;line-height:1;color:var(--ink);
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ev-lab{font-family:var(--mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.10em;color:var(--muted);margin-bottom:5px}
+.ev-block{padding:12px 0;border-bottom:1px solid var(--line)}
+.ev-block:last-child{border-bottom:0}
+.ev-ids{font-family:var(--mono);font-size:10px;color:var(--muted);
+  word-break:break-all;line-height:1.7;max-height:112px;overflow:auto}
+/* tick strip: one mark per play, tagged vs untagged. Real counts only. */
+.ticks{display:flex;gap:2px;flex-wrap:wrap;margin-top:6px}
+.tick{width:5px;height:18px;background:#2b3641;border-radius:1px}
+.tick.on{background:var(--lime)}
+.tick.half{background:var(--amber)}
+
+/* ---------- KPI row: 1px coloured borders ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px}
+.kpi{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.kpi .k{font-family:var(--mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.10em;color:var(--muted)}
+.kpi .v{font-family:var(--mono);font-size:26px;color:var(--ink);
+  font-variant-numeric:tabular-nums;margin-top:5px}
+.kpi.a{border-color:var(--amber)}
+.kpi.c{border-color:var(--cyan)}
+.kpi.g{border-color:var(--muted)}  /* not --seal: that token is the frozen seal only */
+.kpi.l{border-color:var(--lime)}
+
+/* ---------- schematic: field lines, one accent actor ---------- */
+.schematic{background:#0e141a;border:1px solid var(--line);border-radius:var(--r);
+  padding:10px;margin-bottom:12px}
+.schematic svg{display:block;width:100%;height:auto;max-width:100%}
+
+/* ---------- bottom tape ---------- */
+.tape{margin:0 18px 18px;background:var(--bg-2);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;max-width:1800px}
+.tape>summary{cursor:pointer;list-style:none;padding:10px 14px;font-family:var(--mono);
+  font-size:10px;text-transform:uppercase;letter-spacing:.10em;color:var(--muted);
+  border-bottom:1px solid var(--line)}
+.tape>summary::-webkit-details-marker{display:none}
+.tape-body{max-height:210px;overflow:auto}
+.tp{display:grid;grid-template-columns:96px 1fr 150px 92px;gap:10px;align-items:center;
+  width:100%;text-align:left;padding:7px 14px;border:0;border-bottom:1px solid var(--line);
+  background:none;border-radius:0;font-family:var(--mono);font-size:11px;
+  color:var(--muted);cursor:pointer;letter-spacing:.02em;text-transform:none}
+.tp:hover,.tp:focus-visible{background:#182029}
+.tp .id{color:#5d6b76}
+.tp .fam{color:var(--ink)}
+.tp.on{background:#1b242c}
 
 /* ---------- controls ---------- */
-input,select,textarea{font:inherit;letter-spacing:var(--body-tracking);
-  padding:10px 12px;border:1px solid var(--linen);border-radius:6px;
-  background:var(--parchment);color:var(--ink)}
-input::placeholder,textarea::placeholder{color:var(--stone)}
-input:focus,select:focus,textarea:focus{border-color:var(--ink)}
-label{font-size:14px;color:var(--graphite);display:inline-flex;align-items:center;gap:7px}
+input,select,textarea{font:inherit;font-size:14px;padding:8px 10px;
+  border:1px solid var(--line);border-radius:6px;background:#0e141a;color:var(--ink)}
+input::placeholder,textarea::placeholder{color:#5d6b76}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);outline:none}
+label{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:9px}
+.filters-advanced{margin-top:9px}
 
-.tabs,.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.tabs{margin:calc(var(--section-gap) - 24px) 0 0;gap:8px}
-.tabs button{border-color:var(--linen);color:var(--graphite)}
-.tabs button::after{content:none}
-.tabs button.active{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+.tabs{display:flex;gap:7px;flex-wrap:wrap}
+.tabs button.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .panel{display:none}
 .panel.active{display:block}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
-.filters-advanced{margin-top:10px}
 
-h2{font-family:var(--display);font-weight:300;font-size:34px;line-height:1.05;
-  letter-spacing:var(--display-tracking);margin:0 0 18px;text-wrap:balance}
-h3{font-family:var(--lab-mono);font-size:12px;font-weight:500;text-transform:uppercase;
-  letter-spacing:var(--lab-tracking);color:var(--graphite);margin:0 0 16px}
-.muted{color:var(--stone);font-size:13px}
+h2{font-family:var(--body);font-weight:300;font-size:27px;line-height:1.15;
+  letter-spacing:-.02em;margin:0 0 14px;color:var(--ink)}
+h3{font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;
+  letter-spacing:.10em;color:var(--muted);margin:0 0 12px}
+.muted{color:var(--muted);font-size:12px}
 
-/* ---------- play finder ---------- */
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{font-family:var(--lab-mono);font-size:12px;font-weight:500;text-transform:uppercase;
-  letter-spacing:var(--lab-tracking);color:var(--graphite);
-  position:sticky;top:0;background:var(--canvas);
-  border-bottom:var(--rule);padding:10px 10px 9px;text-align:left}
-td{border-bottom:var(--hairline);padding:14px 10px;text-align:left;vertical-align:top}
-tbody tr:hover td{background:var(--parchment)}
-td small{color:var(--stone);font-size:12px}
+/* ---------- play finder table ---------- */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;
+  letter-spacing:.10em;color:var(--muted);position:sticky;top:0;background:var(--bg-2);
+  border-bottom:1px solid var(--line);padding:9px 8px;text-align:left}
+td{border-bottom:1px solid var(--line);padding:11px 8px;text-align:left;
+  vertical-align:top;color:var(--ink)}
+tbody tr:hover td{background:#182029}
+td small{color:var(--muted);font-size:11px}
 .two-line{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-  overflow:hidden;min-width:220px}
-.play-check{accent-color:var(--ink)}
-td button{padding:7px 13px}
+  overflow:hidden;min-width:180px}
+.play-check{accent-color:var(--lime)}
+td button{padding:6px 10px}
 
-/* ---------- state tags: lab-mono 12/0.10em ---------- */
-.badge{display:inline-block;font-family:var(--lab-mono);font-size:12px;line-height:1.3;
-  text-transform:uppercase;letter-spacing:var(--lab-tracking);
-  padding:3px 9px;border:1px solid var(--linen);border-radius:3px;
-  color:var(--graphite);background:transparent;white-space:nowrap}
-.badge.agreed,.badge.usable,.badge.approved{border-color:var(--ink);color:var(--ink)}
-.badge.partial,.badge.directional,.badge.candidate{border-style:dashed;border-color:var(--graphite)}
-.badge.insufficient,.badge.rejected{color:var(--stone);border-color:var(--linen)}
-.badge.overridden,.badge.film-chip{border-color:var(--graphite);color:var(--graphite)}
-/* Diagonal stamp on untagged rows only. */
-.badge.untagged{transform:rotate(-10deg);transform-origin:left center;
-  border-style:dashed;border-color:var(--stone);color:var(--stone)}
+/* ---------- state chips ---------- */
+.badge{display:inline-block;font-family:var(--mono);font-size:10px;line-height:1.3;
+  text-transform:uppercase;letter-spacing:.09em;padding:3px 8px;border-radius:999px;
+  border:1px solid var(--line);color:var(--muted);background:transparent;white-space:nowrap}
+.badge.agreed,.badge.usable,.badge.approved{border-color:var(--lime);color:var(--lime)}
+.badge.partial,.badge.directional,.badge.candidate{border-color:var(--amber);color:var(--amber)}
+.badge.insufficient,.badge.rejected{border-color:var(--line);color:#5d6b76}
+.badge.overridden,.badge.film-chip{border-color:var(--cyan);color:var(--cyan)}
+.badge.untagged{border-style:dashed;border-color:#3a4650;color:#5d6b76}
 
-/* ---------- decisions / call sheet ---------- */
-.decision{border-left:2px solid var(--ink);padding-left:16px}
-/* CALL / DO NOT CALL / IF THEN render as static ghost pills, not buttons. */
-.decision .row b{display:inline-flex;align-items:center;
-  font-family:var(--lab-mono);font-size:12px;font-weight:500;
-  text-transform:uppercase;letter-spacing:var(--pill-tracking);
-  border:1px solid var(--ink);border-radius:var(--pill-radius);
-  padding:5px 14px;color:var(--ink)}
-.decision h3{font-family:var(--display);font-weight:300;font-size:26px;
-  letter-spacing:var(--display-tracking);text-transform:none;color:var(--ink);margin:12px 0 8px}
-.danger{color:var(--ink);font-weight:600}
+/* ---------- decisions ---------- */
+.decision{border-left:2px solid var(--line);padding-left:13px}
+.decision .row b{display:inline-flex;align-items:center;font-family:var(--mono);
+  font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;
+  border:1px solid var(--ink);border-radius:999px;padding:4px 11px;color:var(--ink)}
+.decision h3{font-family:var(--body);font-weight:300;font-size:21px;letter-spacing:-.02em;
+  text-transform:none;color:var(--ink);margin:10px 0 7px}
 
-/* ---------- the single bronze seal: frozen sheet only ---------- */
-#freezeState:not(:empty){font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
-  letter-spacing:var(--lab-tracking);color:var(--bronze);
-  border:1px solid var(--bronze);border-radius:var(--pill-radius);padding:5px 14px}
+/* refusal notes: --danger is text only, never a surface */
+.danger{color:var(--danger);font-weight:500;font-size:13px}
 
 /* ---------- clip drawer ---------- */
-.drawer{display:none;background:var(--parchment);border:var(--hairline);border-left:2px solid var(--ink)}
+.drawer{display:none;background:#0e141a;border:1px solid var(--line);border-radius:var(--r)}
 .drawer.open{display:block}
-.video-box{position:relative;background:var(--ink);border:1px solid var(--ink);
-  max-width:960px;aspect-ratio:16/9;display:grid;place-items:center;max-width:100%}
+.video-box{position:relative;background:#05080a;border:1px solid var(--line);
+  border-radius:8px;aspect-ratio:16/9;display:grid;place-items:center;max-width:100%}
 .video-box video{width:100%;height:100%;object-fit:contain}
 .video-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
-.shuttle-hint{font-family:var(--lab-mono);font-size:12px;text-transform:uppercase;
-  letter-spacing:var(--lab-tracking);color:var(--graphite)}
-.tag-editor{margin-top:16px;padding-top:16px;border-top:var(--hairline)}
+.shuttle-hint{font-family:var(--mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--muted)}
+.tag-editor{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 
-/* ---------- system message ---------- */
-pre{white-space:pre-wrap;word-break:break-word;background:var(--linen);color:var(--graphite);
-  font-family:var(--lab-mono);font-size:12px;letter-spacing:0;line-height:1.6;
-  padding:16px;border-radius:6px;max-height:300px;overflow:auto}
+pre{white-space:pre-wrap;word-break:break-word;background:#0e141a;color:var(--muted);
+  font-family:var(--mono);font-size:11px;line-height:1.6;padding:13px;
+  border-radius:8px;max-height:220px;overflow:auto;margin:0}
 
-@media (max-width:720px){
-  header{padding:18px 16px}
-  header b{font-size:34px}
-  main{padding:40px 16px 64px}
-  .card{padding:20px}
-  .notice{padding:0 16px}
+/* ---------- phone-first: rails become accordions ---------- */
+@media (max-width:900px){
+  .work{grid-template-columns:1fr;padding:12px}
+  .rail{position:static}
+  .rail-body{max-height:none}
+  .tape{margin:0 12px 12px}
+  .auth{margin-left:0;width:100%}
+  .auth input{min-width:0;flex:1}
+  .hud{padding:12px}
+  .tp{grid-template-columns:80px 1fr 84px;gap:8px}
+  .tp .st{display:none}
+  .ev-n{font-size:44px}
 }
 </style>
 </head>
 <body>
 <div class="notice" role="note">Pilot. Two GAs tag. Coordinator freezes Thursday.</div>
-<header><div class="masthead"><b>FIELDMIND</b><span class="sub">Week-of-game call sheet. Source PBP is not a tendency.</span></div><div class="auth"><label class="field"><span>Bearer</span><input id="token" type="password" autocomplete="off" placeholder="Pilot bearer token"></label><label class="field"><span>Program</span><input id="programId" placeholder="Program ID if multi-program"></label><label class="field"><span>Week plan</span><input id="planId" placeholder="Active week plan ID"></label><button onclick="saveSession()">Enter</button></div></header>
-<main>
-<div class="card"><h3>Week setup</h3><div class="grid"><input id="teamName" placeholder="Our team name"><input id="teamId" placeholder="Optional source team UUID"><input id="season" type="number" value="2026"><input id="week" type="number" min="0" max="25" placeholder="Week"><input id="opponent" placeholder="Opponent"><select id="side"><option value="offense">Offense</option><option value="defense">Defense</option></select></div><div class="row" style="margin-top:10px"><button onclick="createPlan()">Create / update week plan</button><span class="muted">One plan controls the week-of-game decision loop.</span></div></div>
-<div class="tabs"><button class="active" onclick="tab('plays',this)">Play Finder</button><button onclick="tab('opponentPanel',this)">Opponent one-pager</button><button onclick="tab('selfPanel',this)">Self-scout</button><button onclick="tab('callPanel',this)">Call-sheet</button></div>
-<section id="plays" class="panel active"><div class="card"><h2>Play Finder</h2><div class="grid"><input id="fQ" placeholder="Search play text"><input id="fOffense" placeholder="Offense"><input id="fDefense" placeholder="Defense"><input id="fGame" placeholder="Game UUID"><input id="fSeason" type="number" placeholder="Season"><input id="fWeek" type="number" min="0" max="25" placeholder="Week"><select id="fDown"><option value="">Any down</option><option>1</option><option>2</option><option>3</option><option>4</option></select><select id="fDistanceBucket"><option value="">Any distance bucket</option><option>short</option><option>medium</option><option>long</option></select><select id="fFieldZone"><option value="">Any field zone</option><option>backed_up</option><option>open_field</option><option>plus</option><option>red_zone</option></select><select id="fFamily"><option value="">Any play family</option></select><select id="fFormation"><option value="">Any formation</option></select><select id="fMotion"><option value="">Any motion</option></select><select id="fCoverage"><option value="">Any coverage</option></select><select id="fPersonnel"><option value="">Any personnel</option></select></div><div class="grid filters-advanced"><select id="fSource"><option value="any">Any source</option><option>cfbd</option><option>nflverse</option><option>seed</option><option>fieldmind</option></select><select id="fSourceClass"><option value="">Any source class</option><option>pass</option><option>run</option></select><select id="fTagState"><option value="">Any tag state</option><option>untagged</option><option>partial</option><option>agreed</option><option>overridden</option></select><select id="fSuccess"><option value="">Any success</option><option value="true">Success</option><option value="false">Failure</option></select><select id="fExplosive"><option value="">Any explosive</option><option value="true">Explosive</option><option value="false">Not explosive</option></select><select id="fTurnover"><option value="">Any turnover</option><option value="true">Turnover</option><option value="false">No turnover</option></select><select id="fFilm"><option value="">Any film state</option><option value="true">Has film</option><option value="false">No film</option></select><label><input id="fExcludeUnknown" type="checkbox"> Exclude UNKNOWN families</label><input id="fMinYards" type="number" placeholder="Min yards"><input id="fMaxYards" type="number" placeholder="Max yards"><input id="fMinDistance" type="number" min="0" placeholder="Min distance"><input id="fMaxDistance" type="number" min="0" placeholder="Max distance"><select id="fSort"><option value="sequence">Sequence</option><option value="epa_desc">EPA / PPA</option><option value="yards_desc">Yards</option><option value="recent_tag">Recent tag</option></select></div><div class="row" style="margin-top:10px"><button onclick="loadPlays()">Find plays</button><button onclick="loadAgreement()">Tag agreement</button><button onclick="copyEvidence()">Copy selected to Call-sheet</button><input id="searchName" placeholder="Saved search name"><button onclick="saveSearch()">Save</button><select id="savedSearches" onchange="loadSavedSearch()"><option value="">Load saved search</option></select><span id="playCount" class="muted"></span></div></div><div class="card" style="overflow:auto;max-height:620px"><table><thead><tr><th></th><th>Situation</th><th>Play</th><th>SOURCE</th><th>TRUSTED tags</th><th>Value</th><th>State</th><th></th></tr></thead><tbody id="playsBody"></tbody></table></div><div id="emptyFinder" class="card" style="display:none">Public PBP is loaded but nothing is trusted yet. Two GAs must tag before families are tendencies.</div><div id="clipDrawer" class="card drawer"><div class="row"><h3 id="clipTitle">Clip bay</h3><button onclick="shuttleClip(-1)">Previous</button><button onclick="shuttleClip(1)">Next</button><span id="clipPosition" class="muted"></span><button onclick="closeClip()">Close</button><span class="shuttle-hint">J −2s · K play/pause · L +2s · hold L 2× · Shift+J/L 1 frame</span></div><div id="clipAttach"></div><div class="video-box" id="videoBox"><video id="clipVideo" controls playsinline></video><canvas id="drawCanvas"></canvas></div><div class="row" style="margin-top:10px"><input id="strokeColor" type="color" value="#ff2b2b"><input id="strokeWidth" type="number" min="1" max="40" value="5"><button onclick="undoStroke()">Undo</button><button onclick="clearStrokes()">Clear</button><button onclick="saveOverlay()">Save overlay</button></div><div id="tagEditor" class="tag-editor"></div></div><div id="agreement"></div></section>
+
+<header class="hud"><b>FIELDMIND</b><div class="hud-meta"><span>Program <span class="v" id="hudProgram">&mdash;</span></span><span>Week <span class="v" id="hudWeek">&mdash;</span></span></div><span id="freezeState" class="freeze"></span><div class="auth"><label class="field"><span>Bearer</span><input id="token" type="password" autocomplete="off" placeholder="Pilot bearer token"></label><label class="field"><span>Program</span><input id="programId" placeholder="Program ID"></label><label class="field"><span>Week plan</span><input id="planId" placeholder="Week plan ID"></label><button class="go" onclick="saveSession()">Enter</button></div></header><main class="work"><details class="rail rail-left" open><summary>Week &amp; events</summary><div class="rail-body"><div class="card"><h3>Week setup</h3><div class="grid"><input id="teamName" placeholder="Our team name"><input id="teamId" placeholder="Optional source team UUID"><input id="season" type="number" value="2026"><input id="week" type="number" min="0" max="25" placeholder="Week"><input id="opponent" placeholder="Opponent"><select id="side"><option value="offense">Offense</option><option value="defense">Defense</option></select></div><div class="row" style="margin-top:10px"><button onclick="createPlan()">Create / update week plan</button><span class="muted">One plan controls the week-of-game decision loop.</span></div></div><div class="rail-count" id="railCount">No cut loaded</div><div id="eventRail"></div></div></details><div class="stage"><div class="kpis" id="kpis"></div><div class="tabs"><button class="active" onclick="tab('plays',this)">Play Finder</button><button onclick="tab('opponentPanel',this)">Opponent one-pager</button><button onclick="tab('selfPanel',this)">Self-scout</button><button onclick="tab('callPanel',this)">Call-sheet</button></div>
+<section id="plays" class="panel active"><div class="card"><h2>Play Finder</h2><div class="grid"><input id="fQ" placeholder="Search play text"><input id="fOffense" placeholder="Offense"><input id="fDefense" placeholder="Defense"><input id="fGame" placeholder="Game UUID"><input id="fSeason" type="number" placeholder="Season"><input id="fWeek" type="number" min="0" max="25" placeholder="Week"><select id="fDown"><option value="">Any down</option><option>1</option><option>2</option><option>3</option><option>4</option></select><select id="fDistanceBucket"><option value="">Any distance bucket</option><option>short</option><option>medium</option><option>long</option></select><select id="fFieldZone"><option value="">Any field zone</option><option>backed_up</option><option>open_field</option><option>plus</option><option>red_zone</option></select><select id="fFamily"><option value="">Any play family</option></select><select id="fFormation"><option value="">Any formation</option></select><select id="fMotion"><option value="">Any motion</option></select><select id="fCoverage"><option value="">Any coverage</option></select><select id="fPersonnel"><option value="">Any personnel</option></select></div><div class="grid filters-advanced"><select id="fSource"><option value="any">Any source</option><option>cfbd</option><option>nflverse</option><option>seed</option><option>fieldmind</option></select><select id="fSourceClass"><option value="">Any source class</option><option>pass</option><option>run</option></select><select id="fTagState"><option value="">Any tag state</option><option>untagged</option><option>partial</option><option>agreed</option><option>overridden</option></select><select id="fSuccess"><option value="">Any success</option><option value="true">Success</option><option value="false">Failure</option></select><select id="fExplosive"><option value="">Any explosive</option><option value="true">Explosive</option><option value="false">Not explosive</option></select><select id="fTurnover"><option value="">Any turnover</option><option value="true">Turnover</option><option value="false">No turnover</option></select><select id="fFilm"><option value="">Any film state</option><option value="true">Has film</option><option value="false">No film</option></select><label><input id="fExcludeUnknown" type="checkbox"> Exclude UNKNOWN families</label><input id="fMinYards" type="number" placeholder="Min yards"><input id="fMaxYards" type="number" placeholder="Max yards"><input id="fMinDistance" type="number" min="0" placeholder="Min distance"><input id="fMaxDistance" type="number" min="0" placeholder="Max distance"><select id="fSort"><option value="sequence">Sequence</option><option value="epa_desc">EPA / PPA</option><option value="yards_desc">Yards</option><option value="recent_tag">Recent tag</option></select></div><div class="row" style="margin-top:10px"><button onclick="loadPlays()">Find plays</button><button onclick="loadAgreement()">Tag agreement</button><button onclick="copyEvidence()">Copy selected to Call-sheet</button><input id="searchName" placeholder="Saved search name"><button onclick="saveSearch()">Save</button><select id="savedSearches" onchange="loadSavedSearch()"><option value="">Load saved search</option></select><span id="playCount" class="muted"></span></div></div><div class="card" style="overflow:auto;max-height:620px"><table><thead><tr><th></th><th>Situation</th><th>Play</th><th>SOURCE</th><th>TRUSTED tags</th><th>Value</th><th>State</th><th></th></tr></thead><tbody id="playsBody"></tbody></table></div><div id="emptyFinder" class="card" style="display:none">Public PBP is loaded but nothing is trusted yet. Two GAs must tag before families are tendencies.</div><div id="clipDrawer" class="card drawer"><div class="row"><h3 id="clipTitle">Clip bay</h3><button onclick="shuttleClip(-1)">Previous</button><button onclick="shuttleClip(1)">Next</button><span id="clipPosition" class="muted"></span><button onclick="closeClip()">Close</button><span class="shuttle-hint">J −2s · K play/pause · L +2s · hold L 2× · Shift+J/L 1 frame</span></div><div id="clipAttach"></div><div class="schematic" id="schematic"></div><div class="video-box" id="videoBox"><video id="clipVideo" controls playsinline></video><canvas id="drawCanvas"></canvas></div><div class="row" style="margin-top:10px"><input id="strokeColor" type="color" value="#ff2b2b"><input id="strokeWidth" type="number" min="1" max="40" value="5"><button onclick="undoStroke()">Undo</button><button onclick="clearStrokes()">Clear</button><button onclick="saveOverlay()">Save overlay</button></div><div id="tagEditor" class="tag-editor"></div></div><div id="agreement"></div></section>
 <section id="opponentPanel" class="panel"><div class="card"><h2>Opponent one-pager</h2><div class="row"><button onclick="loadOpponent()">Refresh</button><span class="muted">n&lt;8 is a question, never a game-plan fact.</span></div></div><div id="opponentCards"></div></section>
 <section id="selfPanel" class="panel"><div class="card"><h2>Self-scout</h2><div class="row"><button onclick="loadSelf()">Refresh</button><span class="muted">What are we repeatedly putting on film?</span></div></div><div id="selfCards"></div></section>
 <section id="callPanel" class="panel">
-<div class="card"><h2>Call-sheet</h2><div class="row"><button onclick="loadCallSheet()">Refresh all</button><button id="freezeBtn" onclick="freezePlan()">Freeze Thursday sheet</button><span id="freezeState" class="freeze"></span><span id="freezeNote" class="danger" role="status" aria-live="polite"></span></div></div>
+<div class="card"><h2>Call-sheet</h2><div class="row"><button onclick="loadCallSheet()">Refresh all</button><button id="freezeBtn" onclick="freezePlan()">Freeze Thursday sheet</button><span id="freezeNote" class="danger" role="status" aria-live="polite"></span></div></div>
 <div id="editableArea">
 <div class="card"><h3>Add decision candidate</h3><div class="grid"><select id="ruleType"><option value="call">CALL</option><option value="do_not_call">DO NOT CALL</option><option value="if_then">IF → THEN</option></select><input id="ruleSituation" placeholder="Situation"><input id="ruleCall" placeholder="Call / answer"><input id="ruleN" type="number" min="0" value="0" placeholder="Evidence n"><select id="ruleConfidence"><option value="insufficient">Insufficient</option><option value="directional">Directional</option><option value="usable">Usable</option></select><input id="rulePriority" type="number" min="0" max="100" value="50"></div><textarea id="ruleReason" rows="3" style="width:100%;margin-top:10px" placeholder="Evidence-based reason"></textarea><input id="ruleEvidence" style="width:100%;margin-top:8px" placeholder="Evidence play UUIDs, comma separated"><div class="row" style="margin-top:8px"><button onclick="createRule()">Create candidate</button><span class="muted">Approval is blocked below n=8 or with insufficient confidence.</span><span id="ruleNote" class="danger" role="status" aria-live="polite"></span></div></div>
 <div class="card"><h3>Player-look evidence</h3><div class="grid"><input id="evPlayer" placeholder="Player UUID"><select id="evSource"><option value="practice">Practice</option><option value="game">Game</option><option value="meeting">Meeting</option></select><input id="evDate" type="date"><input id="evCall" placeholder="Call name"><select id="evCorrect"><option value="true">Processed correctly</option><option value="false">Incorrect / not processed</option></select><select id="evFormation"></select><select id="evMotion"></select><select id="evCoverage"></select><select id="evPersonnel"></select></div><input id="evNotes" style="width:100%;margin-top:8px" placeholder="Optional football-performance note"><div class="row" style="margin-top:8px"><button onclick="addPlayerEvidence()">Add evidence</button><span class="muted">Raw football evidence only. No IQ or cognition score.</span><span id="evidenceNote" class="danger" role="status" aria-live="polite"></span></div></div>
@@ -152,9 +225,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--linen);color:var
 </div>
 <div class="card"><h3>Approved Thursday sheet</h3><div id="callSheet"></div></div>
 <div class="card"><h3>Changed-a-call log</h3><div class="grid"><select id="changeType"><option value="added">Added</option><option value="removed">Removed</option><option value="modified">Modified</option><option value="confirmed">Confirmed</option></select><select id="changeYes"><option value="true">Changed a call: YES</option><option value="false">Changed a call: NO</option></select><input id="changeRule" placeholder="Optional call-rule UUID"><input id="changeNotes" placeholder="What changed / why"></div><div class="row" style="margin-top:8px"><button onclick="logChangedCall()">Log weekly outcome</button></div></div>
-</section>
-<div class="card"><h3>System message</h3><pre id="status">Ready.</pre></div>
-</main>
+</section></div><details class="rail rail-right" open><summary>Evidence</summary><div class="rail-body" id="evidenceRail"></div></details></main><details class="tape" open><summary>Play tape &mdash; current cut</summary><div class="tape-body" id="playTape"></div></details><details class="tape"><summary>System message</summary><div class="tape-body" style="padding:12px"><pre id="status">Ready.</pre></div></details>
 <script>
 let vocab={},finderPlays=[],activePlay=null,strokes=[],drawing=null,lHeld=false;const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function headers(){const h={'Authorization':'Bearer '+$('token').value.trim(),'Content-Type':'application/json'};const p=$('programId').value.trim();if(p)h['X-Program-ID']=p;return h}
@@ -176,7 +247,7 @@ function copyEvidence(){const ids=[...document.querySelectorAll('.play-check:che
 async function refreshSearches(){try{const d=await api('/api/v1/play-searches');$('savedSearches').innerHTML='<option value="">Load saved search</option>'+d.searches.map(s=>`<option value="${esc(s.id)}" data-query="${esc(JSON.stringify(s.query))}">${esc(s.name)}</option>`).join('')}catch{}}
 async function saveSearch(){const name=$('searchName').value.trim();if(!name)throw new Error('Name the saved search');await api('/api/v1/play-searches',{method:'POST',body:JSON.stringify({name,query:finderQuery()})});await refreshSearches()}
 function loadSavedSearch(){const o=$('savedSearches').selectedOptions[0];if(!o||!o.dataset.query)return;loadPlays(JSON.parse(o.dataset.query))}
-async function openClip(id){activePlay=finderPlays.find(p=>p.id===id)||{id};const d=await api(`/api/v1/plays/${id}/clip`);strokes=d.telestrate.strokes||[];const pos=finderPlays.findIndex(p=>p.id===id);$('clipTitle').textContent=`Clip bay · ${id.slice(0,8)}`;$('clipPosition').textContent=pos<0?'Outside current cut':`${pos+1} of ${finderPlays.length} in current cut`;$('clipDrawer').classList.add('open');$('tagEditor').innerHTML=tagForm(activePlay);const v=$('clipVideo');v.pause();v.removeAttribute('src');if(d.film_url&&d.provider!=='hudl'){v.src=d.film_url;v.style.display='block';$('clipAttach').innerHTML=''}else if(d.film_url){v.style.display='none';$('clipAttach').innerHTML=`<p><a href="${esc(d.film_url)}" target="_blank" rel="noopener">Open in Hudl</a> (embedding may be blocked by the provider).</p>`}else{v.style.display='none';$('clipAttach').innerHTML='<div class="row"><select id="linkProvider"><option>hudl</option><option>other</option></select><input id="linkUrl" style="min-width:360px" placeholder="Authorized film URL"><button onclick="attachLink()">Attach link</button></div>'}drawAll();$('clipDrawer').scrollIntoView({behavior:'smooth'})}
+async function openClip(id){activePlay=finderPlays.find(p=>p.id===id)||{id};const d=await api(`/api/v1/plays/${id}/clip`);strokes=d.telestrate.strokes||[];const pos=finderPlays.findIndex(p=>p.id===id);$('clipTitle').textContent=`Clip bay · ${id.slice(0,8)}`;$('clipPosition').textContent=pos<0?'Outside current cut':`${pos+1} of ${finderPlays.length} in current cut`;$('clipDrawer').classList.add('open');$('tagEditor').innerHTML=tagForm(activePlay);const v=$('clipVideo');v.pause();v.removeAttribute('src');if(d.film_url&&d.provider!=='hudl'){v.src=d.film_url;v.style.display='block';$('clipAttach').innerHTML=''}else if(d.film_url){v.style.display='none';$('clipAttach').innerHTML=`<p><a class="btn go" href="${esc(d.film_url)}" target="_blank" rel="noopener">Open in Hudl</a> (embedding may be blocked by the provider).</p>`}else{v.style.display='none';$('clipAttach').innerHTML='<div class="row"><select id="linkProvider"><option>hudl</option><option>other</option></select><input id="linkUrl" style="min-width:360px" placeholder="Authorized film URL"><button onclick="attachLink()">Attach link</button></div>'}drawAll();$('clipDrawer').scrollIntoView({behavior:'smooth'})}
 function shuttleClip(delta){const i=finderPlays.findIndex(p=>p.id===activePlay?.id),next=i+delta;if(next>=0&&next<finderPlays.length)openClip(finderPlays[next].id)}
 function closeClip(){$('clipVideo').pause();$('clipDrawer').classList.remove('open');activePlay=null}
 async function attachLink(){await api(`/api/v1/plays/${activePlay.id}/link`,{method:'POST',body:JSON.stringify({provider:$('linkProvider').value,url:$('linkUrl').value})});await loadPlays();await openClip(activePlay.id)}
@@ -197,9 +268,79 @@ async function createRule(){const ids=$('ruleEvidence').value.split(',').map(x=>
 async function reviewRules(){const d=await api(`/api/v1/week-plans/${plan()}/call-rules`);$('ruleReview').innerHTML=d.rules.length?d.rules.map(r=>`<div class="decision" style="margin:12px 0"><div class="row"><b>${esc(r.rule_type).toUpperCase()}</b>${badge(r.status)}${badge(r.confidence)}<span>n=${r.sample_n}</span></div><div><b>${esc(r.situation)} → ${esc(r.call_name)}</b></div><div class="muted">${esc(r.reason)}</div>${r.status==='candidate'?`<div class="row" style="margin-top:6px"><button onclick="setRuleStatus('${esc(r.id)}','approved')">Approve</button><button onclick="setRuleStatus('${esc(r.id)}','rejected')">Reject</button></div>`:''}</div>`).join(''):'No decision candidates yet.'}
 async function setRuleStatus(id,status){await runWrite('reviewNote',()=>api(`/api/v1/week-plans/${plan()}/call-rules/${id}`,{method:'PATCH',body:JSON.stringify({status})}))}
 async function addPlayerEvidence(){const body={player_id:$('evPlayer').value.trim(),source_type:$('evSource').value,event_date:$('evDate').value,formation:$('evFormation').value,motion:$('evMotion').value,coverage_family:$('evCoverage').value,personnel:$('evPersonnel').value,call_name:$('evCall').value.trim()||null,processed_correctly:$('evCorrect').value==='true',notes:$('evNotes').value.trim()||null};await runWrite('evidenceNote',()=>api(`/api/v1/week-plans/${plan()}/player-look-evidence`,{method:'POST',body:JSON.stringify(body)}))}
-async function loadCallSheet(){const d=await api(`/api/v1/week-plans/${plan()}/call-sheet`);const frozen=d.week_plan.status==='frozen';$('freezeState').textContent=frozen?'FROZEN '+(d.week_plan.frozen_at||''):'';$('editableArea').style.display=frozen?'none':'block';$('freezeBtn').disabled=frozen;$('callSheet').innerHTML=d.rules.length?d.rules.map(r=>`<div class="decision" style="margin:12px 0"><div class="row"><b>${esc(r.rule_type).toUpperCase()}</b>${badge(r.confidence)}<span>n=${r.sample_n}</span></div><h3>${esc(r.situation)} → ${esc(r.call_name)}</h3><div>${esc(r.reason)}</div><div class="muted">Evidence plays: ${(r.evidence_play_ids||[]).map(esc).join(', ')||'none attached'}</div></div>`).join(''):'No approved call decisions yet.';if(d.player_look_evidence.length)$('callSheet').insertAdjacentHTML('beforeend','<hr><h3>Player-look evidence</h3>'+d.player_look_evidence.map(e=>`<div>${esc(e.player_name)} — ${e.correct}/${e.n} correct · ${esc(e.call_name||'uncoupled look')} · as of ${esc(e.as_of)}</div>`).join(''));if(!frozen)await reviewRules()}
+async function loadCallSheet(){const d=await api(`/api/v1/week-plans/${plan()}/call-sheet`);lastSheet=d;const frozen=d.week_plan.status==='frozen';$('freezeState').textContent=frozen?'FROZEN '+(d.week_plan.frozen_at||''):'';$('editableArea').style.display=frozen?'none':'block';$('freezeBtn').disabled=frozen;$('callSheet').innerHTML=d.rules.length?d.rules.map(r=>`<div class="decision" style="margin:12px 0"><div class="row"><b>${esc(r.rule_type).toUpperCase()}</b>${badge(r.confidence)}<span>n=${r.sample_n}</span></div><h3>${esc(r.situation)} → ${esc(r.call_name)}</h3><div>${esc(r.reason)}</div><div class="muted">Evidence plays: ${(r.evidence_play_ids||[]).map(esc).join(', ')||'none attached'}</div></div>`).join(''):'No approved call decisions yet.';if(d.player_look_evidence.length)$('callSheet').insertAdjacentHTML('beforeend','<hr><h3>Player-look evidence</h3>'+d.player_look_evidence.map(e=>`<div>${esc(e.player_name)} — ${e.correct}/${e.n} correct · ${esc(e.call_name||'uncoupled look')} · as of ${esc(e.as_of)}</div>`).join(''));if(!frozen)await reviewRules()}
 async function freezePlan(){if(!confirm('Freeze this Thursday sheet? Decision rules and player-look evidence will become immutable.'))return;await runWrite('freezeNote',()=>api(`/api/v1/week-plans/${plan()}/freeze`,{method:'POST'}))}
 async function logChangedCall(){const body={changed_call:$('changeYes').value==='true',change_type:$('changeType').value,notes:$('changeNotes').value.trim()||null};if($('changeRule').value.trim())body.call_rule_id=$('changeRule').value.trim();await api(`/api/v1/week-plans/${plan()}/changed-call`,{method:'POST',body:JSON.stringify(body)})}
+/* ---- workstation panes -------------------------------------------------
+   Rendered from finderPlays and the call-sheet response the page already
+   holds. No new endpoint, no invented figure: every count is a real count. */
+let lastSheet=null,activeId=null;
+function esc2(v){return esc(v==null?'':v)}
+function railRow(p){const st=esc(p.tag_state);
+  return `<button class="evt${p.id===activeId?' on':''}" onclick="openClip('${esc(p.id)}')">`+
+    `<span class="seq">${p.play_sequence??''}</span>`+
+    `<span class="sit">${p.down}&amp;${p.distance} ${esc2(p.field_zone)}</span>`+
+    `<span class="dot ${st}" title="${st}"></span></button>`}
+function renderRail(){const n=finderPlays.length;
+  $('railCount').textContent=n?`${n} plays in cut`:'No cut loaded';
+  $('eventRail').innerHTML=finderPlays.map(railRow).join('')}
+function renderTape(){$('playTape').innerHTML=finderPlays.map(p=>
+  `<button class="tp${p.id===activeId?' on':''}" onclick="openClip('${esc(p.id)}')">`+
+  `<span class="id">${esc(p.id).slice(0,8)}</span>`+
+  `<span class="fam">${esc2(p.play_family)}</span>`+
+  `<span class="st">${esc2(p.personnel)} / ${esc2(p.formation)} / ${esc2(p.coverage_family)}</span>`+
+  `<span>${badge(p.tag_state)}</span></button>`).join('')}
+function renderKpis(){const ps=finderPlays,c=s=>ps.filter(p=>p.tag_state===s).length;
+  $('kpis').innerHTML=[
+    ['a','Plays in cut',ps.length],
+    ['c','Trusted',c('agreed')],
+    ['g','Untagged',c('untagged')],
+    ['l','With film',ps.filter(p=>p.has_film_link).length],
+  ].map(([k,label,v])=>`<div class="kpi ${k}"><div class="k">${label}</div><div class="v">${v}</div></div>`).join('')}
+function ticks(){return finderPlays.map(p=>{const s=p.tag_state;
+  return `<span class="tick ${s==='agreed'?'on':s==='partial'?'half':''}"></span>`}).join('')}
+function renderEvidence(){
+  const rules=(lastSheet&&lastSheet.rules)||[],looks=(lastSheet&&lastSheet.player_look_evidence)||[];
+  const top=rules.slice().sort((a,b)=>(b.sample_n||0)-(a.sample_n||0))[0];
+  const ids=(top&&top.evidence_play_ids)||[];
+  $('evidenceRail').innerHTML=
+    `<div class="ev-block"><div class="ev-lab">Evidence n</div>`+
+    `<div class="ev-n">${top?top.sample_n:'—'}</div>`+
+    `<div style="margin-top:8px">${top?badge(top.confidence):'<span class="muted">No approved decision yet</span>'}</div>`+
+    (top?`<div class="muted" style="margin-top:8px">${esc2(top.situation)} &rarr; ${esc2(top.call_name)}</div>`:'')+
+    `</div>`+
+    `<div class="ev-block"><div class="ev-lab">Tagged vs untagged (${finderPlays.length})</div>`+
+    `<div class="ticks">${ticks()}</div></div>`+
+    `<div class="ev-block"><div class="ev-lab">Player-look evidence</div>`+
+    `<div class="ev-n" style="font-size:34px">${looks.length}</div></div>`+
+    `<div class="ev-block"><div class="ev-lab">Supporting play ids</div>`+
+    `<div class="ev-ids">${ids.length?ids.map(esc).join('<br>'):'<span class="muted">none attached</span>'}</div></div>`}
+/* Field lines with one accent actor: the ball spot. Drawn from the play's own
+   yard_line and distance; nothing is modelled or predicted. */
+function renderSchematic(p){const el=$('schematic');if(!el)return;
+  if(!p||p.yard_line==null){el.innerHTML='<div class="muted">No spot on this play.</div>';return}
+  const W=600,H=140,x=v=>30+(Math.max(0,Math.min(100,v))/100)*(W-60);
+  const los=x(p.yard_line),gain=x(p.yard_line-(p.distance||0));
+  let g='';for(let y=0;y<=100;y+=10){const gx=x(y);
+    g+=`<line x1="${gx}" y1="24" x2="${gx}" y2="${H-24}" stroke="#24303a" stroke-width="1"/>`+
+       `<text x="${gx}" y="${H-8}" fill="#5d6b76" font-size="9" font-family="monospace" text-anchor="middle">${y}</text>`}
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ball spot ${p.yard_line}">`+
+    `<rect x="30" y="24" width="${W-60}" height="${H-48}" fill="none" stroke="#24303a"/>`+g+
+    `<line x1="${gain}" y1="24" x2="${gain}" y2="${H-24}" stroke="#3db7d4" stroke-width="2" stroke-dasharray="4 3"/>`+
+    `<line x1="${los}" y1="18" x2="${los}" y2="${H-18}" stroke="#c6e35a" stroke-width="2"/>`+
+    `<circle cx="${los}" cy="${H/2}" r="5" fill="#c6e35a"/>`+
+    `<text x="${los}" y="14" fill="#c6e35a" font-size="10" font-family="monospace" text-anchor="middle">${p.down}&amp;${p.distance}</text>`+
+    `</svg>`}
+function renderHud(){const w=lastSheet&&lastSheet.week_plan;
+  $('hudProgram').textContent=w?w.team_name:'—';
+  $('hudWeek').textContent=w?`${w.week} · ${w.season} vs ${w.opponent_name}`:'—'}
+/* Wrappers keep the original functions untouched. */
+const _loadPlays=loadPlays;loadPlays=async function(q){const r=await _loadPlays(q);
+  renderRail();renderTape();renderKpis();renderEvidence();return r};
+const _loadCallSheet=loadCallSheet;loadCallSheet=async function(){const r=await _loadCallSheet();
+  renderHud();renderEvidence();return r};
+const _openClip=openClip;openClip=async function(id){const r=await _openClip(id);
+  activeId=id;renderSchematic(activePlay);renderRail();renderTape();return r};
 window.addEventListener('load',async()=>{$('token').value=sessionStorage.fm_token||'';$('programId').value=sessionStorage.fm_program||'';$('planId').value=sessionStorage.fm_plan||'';$('evDate').value=new Date().toISOString().slice(0,10);if(!localStorage.fm_finder_mode)$('fTagState').value='untagged';if($('token').value)try{await loadVocab();await loadPlays()}catch{}})
 </script>
 </body></html>
