@@ -31,9 +31,19 @@ app.router.routes = [
 app.include_router(wedge_router)
 app.include_router(wedge_extra_router)
 
-WEB_INDEX = Path(__file__).with_name("web") / "index.html"
+WEB_DIR = Path(__file__).with_name("web")
+WEB_INDEX = WEB_DIR / "index.html"
+FAVICON = WEB_DIR / "favicon.svg"
 
 
 @app.get("/", include_in_schema=False)
 async def pilot_ui():
     return FileResponse(WEB_INDEX)
+
+
+# Browsers probe /favicon.ico even when the page links the SVG; without an answer
+# they fall back to a blurry default globe in the tab.
+@app.get("/favicon.svg", include_in_schema=False)
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(FAVICON, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
