@@ -200,6 +200,7 @@ Run `python scripts/migrate.py` as a deploy/one-off operation. Never add season 
 - `docs/PRODUCT_SPEC.md`: earlier V1 architecture and system spec; sections outside the locked pilot are not the current 90-day build order
 - `docs/COLLEGE_DATA.md`: CFBD ingestion and source-evidence rules
 - `docs/PRODUCTION_DATA.md`: production database, ingest, provenance, benchmark and rollback procedure
+- `docs/LLMKIT.md`: separate stdlib-only LLM inference/scaling/data reference code in `llmkit/`; not part of the pilot runtime or image
 
 ## Player-evidence guardrail
 

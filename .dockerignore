@@ -19,3 +19,6 @@ htmlcov
 
 # Local-only orchestration.
 docker-compose.yml
+
+# Reference code, not part of the pilot runtime.
+llmkit
