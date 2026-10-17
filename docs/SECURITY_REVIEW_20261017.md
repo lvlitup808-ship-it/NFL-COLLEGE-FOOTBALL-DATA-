@@ -21,7 +21,7 @@ Scope: continue draft PR #11 from `ec2fdf8` against main `86b5192`. Review the m
 
 ## Verification and reproduction
 
-Local baseline: **32 passed, 1 skipped** before changes. Updated local suite: **55 passed, 8 skipped**. The eight skips require migrated PostgreSQL: one existing hub test plus seven new hardening cases. Local PostgreSQL provisioning was unavailable in this execution environment; CI is configured to run those cases against its disposable PostgreSQL 16 service after migration, seed and fixture ingestion. Do not count a skipped test as a pass.
+Local baseline: **32 passed, 1 skipped** before changes. Updated local suite: **55 passed, 8 skipped**. The eight skips require migrated PostgreSQL: one existing hub test plus seven new hardening cases. Local PostgreSQL provisioning was unavailable in this execution environment. CI run [43](https://github.com/lvlitup808-ship-it/NFL-COLLEGE-FOOTBALL-DATA-/actions/runs/39064303944) passed on code commit `1c10d44592821d28e6cf5af46bc6ec2ef6b4044d`: 55 passed / 8 skipped in the general stage, then 21 passed / 0 skipped in the hub + PostgreSQL stage (including the eight previously skipped database cases). The stages overlap; do not add them as unique test counts. Migration/seed/idempotent ingest, source/tag separation, the small-fixture benchmark, browser workflows/CSP, Docker build and both startup smoke checks all passed. This proves behavior on synthetic test data, not production scale.
 
 ```bash
 python -m pip install -r requirements.lock
@@ -40,7 +40,7 @@ python scripts/ingest_cfbd.py --season 2025 --week 1 --fixture tests/fixtures/cf
 HUB_DB_TEST=1 HARDENING_DB_TEST=1 python -m pytest -q tests/test_hub_clip_ids.py tests/test_security_db.py
 ```
 
-With Node, Playwright 1.62.1 and its Chromium installed, start the local pilot on port 8765 and run `node tests/browser_security.cjs`. `PILOT_TEST_URL` can select another local port. The browser suite supplies API fixtures; it tests UI behavior and browser policy enforcement, not real backend authentication. PostgreSQL tests cover that separate boundary. Chromium was unavailable locally and its download failed; the browser result is pending CI, which now installs pinned Playwright and runs this check alongside Python/database/container checks.
+With Node, Playwright 1.62.1 and its Chromium installed, start the local pilot on port 8765 and run `node tests/browser_security.cjs`. `PILOT_TEST_URL` can select another local port. The browser suite supplies API fixtures; it tests UI behavior and browser policy enforcement, not real backend authentication. PostgreSQL tests cover that separate boundary. Chromium was unavailable locally and its download failed; the same browser suite passed in CI run 43, which installs pinned Playwright and runs this check alongside Python/database/container checks.
 
 ## Behavior changes to review
 
