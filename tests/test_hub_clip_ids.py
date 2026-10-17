@@ -66,10 +66,11 @@ def test_migration_keeps_global_and_tenant_identities_separate():
 def test_hub_does_not_restore_forbidden_surfaces_or_prompt_tagging():
     pilot = (ROOT / "app/pilot.py").read_text()
     html = (ROOT / "app/web/index.html").read_text()
+    javascript = (ROOT / "app/web/pilot.js").read_text()
     assert "LEGACY_PREFIX = \"/api/v1\"" in pilot
-    assert "prompt(" not in html
-    assert "Open in Hudl" in html
-    assert "fm_finder_mode" in html
+    assert "prompt(" not in html + javascript
+    assert "Open in Hudl" in javascript
+    assert "fm_finder_mode" in javascript
 
 
 def test_source_class_filter_is_separate_from_trusted_family():

@@ -28,6 +28,11 @@ The pilot includes:
 
 The complete product contract, controlled vocabulary, pilot script, 90-day build order, risk register, customer interview, and operating runbook are in `docs/WEEKLY_WEDGE_EXECUTION.md`.
 
+Security hardening: [250-topic adoption plan](docs/ENGINEERING_HARDENING_250.md) and
+[implemented controls, regression evidence and open risks](docs/SECURITY_REVIEW_20261017.md).
+The pilot accepts at most 1 MiB of JSON metadata per request, rejects unknown write
+fields, and requires HTTPS film links. These controls do not certify production readiness.
+
 ## Stack
 
 - FastAPI / Python 3.12

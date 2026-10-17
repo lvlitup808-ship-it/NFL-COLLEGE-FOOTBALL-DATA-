@@ -1,10 +1,11 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from app.wedge import (
     AuthContext,
+    PilotBody,
     owned_week_plan,
     require_auth,
     require_coach,
@@ -14,7 +15,7 @@ from app.wedge import (
 router = APIRouter(prefix="/api/v1", tags=["FIELDMIND Pilot"])
 
 
-class RosterPlayerCreate(BaseModel):
+class RosterPlayerCreate(PilotBody):
     name: str = Field(min_length=1, max_length=120)
     position: str = Field(min_length=1, max_length=20)
     class_year: str | None = Field(default=None, max_length=40)
