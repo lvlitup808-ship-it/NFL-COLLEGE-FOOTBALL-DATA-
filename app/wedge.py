@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 router = APIRouter(prefix="/api/v1", tags=["FIELDMIND Pilot"])
 
@@ -55,7 +55,7 @@ async def require_auth(
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="bearer_token_required")
     raw = authorization[7:].strip()
-    if len(raw) < 32:
+    if not 32 <= len(raw) <= 1024:
         raise HTTPException(status_code=401, detail="invalid_token")
     token_hash = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     pool = require_pool(request)
@@ -112,7 +112,12 @@ def validate_tag(field: str, value: str | None) -> None:
         raise HTTPException(status_code=422, detail=f"invalid_{field}:{value}")
 
 
-class TagBody(BaseModel):
+class PilotBody(BaseModel):
+    """Reject unknown write fields instead of silently accepting typos/roles."""
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+
+class TagBody(PilotBody):
     play_family: str | None = None
     formation: str | None = None
     motion: str | None = None
@@ -120,12 +125,20 @@ class TagBody(BaseModel):
     personnel: str | None = None
 
 
-class PlayLinkBody(BaseModel):
+class PlayLinkBody(PilotBody):
     provider: Literal["hudl", "other"] = "hudl"
     url: HttpUrl
 
+    @field_validator("url")
+    @classmethod
+    def secure_film_url(cls, value: HttpUrl) -> HttpUrl:
+        # These URLs are opened by the browser, never fetched by this service.
+        if value.scheme != "https" or value.username or value.password:
+            raise ValueError("film_url_must_be_https_without_credentials")
+        return value
 
-class EntityIdBody(BaseModel):
+
+class EntityIdBody(PilotBody):
     kind: Literal["team", "player", "game", "play"]
     canonical_id: uuid.UUID
     source: Literal["cfbd", "nflverse", "espn", "pfr", "gsis", "hudl", "fieldmind", "other"]
@@ -133,32 +146,32 @@ class EntityIdBody(BaseModel):
     label: str | None = Field(default=None, max_length=300)
 
 
-class StrokePoint(BaseModel):
+class StrokePoint(PilotBody):
     x: float = Field(ge=0, le=1)
     y: float = Field(ge=0, le=1)
 
 
-class Stroke(BaseModel):
+class Stroke(PilotBody):
     color: str = Field(min_length=1, max_length=32)
     width: float = Field(gt=0, le=40)
     points: list[StrokePoint] = Field(min_length=1, max_length=2000)
 
 
-class TelestrateBody(BaseModel):
+class TelestrateBody(PilotBody):
     strokes: list[Stroke] = Field(default_factory=list, max_length=200)
 
 
-class PlaySearchBody(BaseModel):
+class PlaySearchBody(PilotBody):
     name: str = Field(min_length=1, max_length=100)
     query: dict[str, Any]
 
 
-class BulkTagBody(BaseModel):
+class BulkTagBody(PilotBody):
     play_ids: list[uuid.UUID] = Field(min_length=1, max_length=40)
     tags: TagBody
 
 
-class WeekPlanCreate(BaseModel):
+class WeekPlanCreate(PilotBody):
     team_id: uuid.UUID | None = None
     team_name: str = Field(min_length=1, max_length=120)
     season: int = Field(ge=2000, le=2100)
@@ -167,7 +180,7 @@ class WeekPlanCreate(BaseModel):
     side: Literal["offense", "defense"]
 
 
-class CallRuleCreate(BaseModel):
+class CallRuleCreate(PilotBody):
     rule_type: Literal["call", "do_not_call", "if_then"]
     situation: str = Field(min_length=1, max_length=500)
     call_name: str = Field(min_length=1, max_length=200)
@@ -178,7 +191,7 @@ class CallRuleCreate(BaseModel):
     evidence_play_ids: list[uuid.UUID] = Field(default_factory=list, max_length=50)
 
 
-class CallRulePatch(BaseModel):
+class CallRulePatch(PilotBody):
     status: Literal["candidate", "approved", "rejected"] | None = None
     situation: str | None = Field(default=None, min_length=1, max_length=500)
     call_name: str | None = Field(default=None, min_length=1, max_length=200)
@@ -188,7 +201,7 @@ class CallRulePatch(BaseModel):
     evidence_play_ids: list[uuid.UUID] | None = Field(default=None, max_length=50)
 
 
-class PlayerLookEvidenceCreate(BaseModel):
+class PlayerLookEvidenceCreate(PilotBody):
     player_id: uuid.UUID
     source_type: Literal["game", "practice", "meeting"]
     event_date: date
@@ -202,7 +215,7 @@ class PlayerLookEvidenceCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=1000)
 
 
-class ChangedCallCreate(BaseModel):
+class ChangedCallCreate(PilotBody):
     call_rule_id: uuid.UUID | None = None
     changed_call: bool
     change_type: Literal["added", "removed", "modified", "confirmed"]
@@ -690,10 +703,18 @@ async def create_entity_id(
     ctx: AuthContext = Depends(require_auth),
 ):
     require_coach(ctx)
-    table = {"team": "teams", "player": "players", "game": "games", "play": "plays"}[body.kind]
+    # Public source teams/players remain referenceable. Customer rosters are private.
+    query = {
+        "team": "SELECT 1 FROM teams WHERE id=$1 AND (program_id IS NULL OR program_id=$2)",
+        "player": """SELECT 1 FROM players p JOIN teams t ON t.id=p.team_id
+                     WHERE p.id=$1 AND (t.program_id IS NULL OR t.program_id=$2)""",
+        "game": "SELECT 1 FROM games WHERE id=$1",
+        "play": "SELECT 1 FROM plays WHERE id=$1",
+    }[body.kind]
     pool = require_pool(request)
     async with pool.acquire() as conn:
-        if not await conn.fetchval(f"SELECT 1 FROM {table} WHERE id=$1", body.canonical_id):
+        args = [body.canonical_id, ctx.program_id] if body.kind in {"team", "player"} else [body.canonical_id]
+        if not await conn.fetchval(query, *args):
             raise HTTPException(status_code=422, detail="canonical_id_not_found")
         row = await conn.fetchrow(
             """
@@ -805,6 +826,7 @@ async def save_play_search(
     request: Request,
     ctx: AuthContext = Depends(require_auth),
 ):
+    require_write(ctx)
     pool = require_pool(request)
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -838,6 +860,7 @@ async def delete_play_search(
     request: Request,
     ctx: AuthContext = Depends(require_auth),
 ):
+    require_write(ctx)
     pool = require_pool(request)
     async with pool.acquire() as conn:
         deleted = await conn.fetchval(
@@ -893,7 +916,9 @@ async def create_week_plan(
     pool = require_pool(request)
     plan_id = uuid.uuid4()
     async with pool.acquire() as conn:
-        if body.team_id and not await conn.fetchval("SELECT 1 FROM teams WHERE id=$1", body.team_id):
+        if body.team_id and not await conn.fetchval(
+            "SELECT 1 FROM teams WHERE id=$1 AND program_id=$2", body.team_id, ctx.program_id
+        ):
             raise HTTPException(status_code=422, detail="team_id_not_found")
         row = await conn.fetchrow(
             """
@@ -902,11 +927,14 @@ async def create_week_plan(
             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'open',$9)
             ON CONFLICT (program_id,team_name,season,week,side)
             DO UPDATE SET opponent_name=EXCLUDED.opponent_name, team_id=EXCLUDED.team_id
+            WHERE week_plans.status <> 'frozen'
             RETURNING *
             """,
             plan_id, ctx.program_id, body.team_id, body.team_name, body.season, body.week,
             body.opponent_name, body.side, ctx.user_id,
         )
+        if row is None:
+            raise HTTPException(status_code=409, detail="week_plan_frozen")
     return dict(row)
 
 
@@ -1002,6 +1030,8 @@ async def create_call_rule(
     rule_id = uuid.uuid4()
     async with pool.acquire() as conn:
         plan = await owned_week_plan(conn, week_plan_id, ctx)
+        if plan["status"] == "frozen":
+            raise HTTPException(status_code=409, detail="week_plan_frozen")
         row = await conn.fetchrow(
             """
             INSERT INTO call_rules (
@@ -1069,8 +1099,14 @@ async def create_player_evidence(
     pool = require_pool(request)
     evidence_id = uuid.uuid4()
     async with pool.acquire() as conn:
-        await owned_week_plan(conn, week_plan_id, ctx)
-        if not await conn.fetchval("SELECT 1 FROM players WHERE id=$1", body.player_id):
+        plan = await owned_week_plan(conn, week_plan_id, ctx)
+        if plan["status"] == "frozen":
+            raise HTTPException(status_code=409, detail="week_plan_frozen")
+        if not await conn.fetchval(
+            """SELECT 1 FROM players p JOIN teams t ON t.id=p.team_id
+               WHERE p.id=$1 AND t.id=$2 AND t.program_id=$3""",
+            body.player_id, plan["team_id"], ctx.program_id,
+        ):
             raise HTTPException(status_code=422, detail="player_id_not_found")
         row = await conn.fetchrow(
             """
@@ -1100,7 +1136,7 @@ async def freeze_week_plan(
         await owned_week_plan(conn, week_plan_id, ctx)
         row = await conn.fetchrow(
             """
-            UPDATE week_plans SET status='frozen',frozen_at=now()
+            UPDATE week_plans SET status='frozen',frozen_at=COALESCE(frozen_at,now())
             WHERE id=$1 AND program_id=$2
             RETURNING *
             """,

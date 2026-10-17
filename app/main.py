@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 import time
 import uuid
@@ -12,6 +13,8 @@ import asyncpg
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+from app.security import security_headers
 
 SERVICE_NAME = "fieldmind-api"
 STARTED_AT = time.monotonic()
@@ -181,7 +184,8 @@ app = FastAPI(
 
 @app.middleware("http")
 async def request_context(request: Request, call_next):
-    request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
+    supplied_id = request.headers.get("x-request-id", "")
+    request_id = supplied_id if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", supplied_id) else str(uuid.uuid4())
     started = time.monotonic()
     try:
         response = await call_next(request)
@@ -207,7 +211,10 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         exc_info=(type(exc), exc, exc.__traceback__),
         extra={"event": "request_exception"},
     )
-    return JSONResponse(status_code=500, content={"error": "internal_server_error"})
+    return JSONResponse(
+        status_code=500, content={"error": "internal_server_error"},
+        headers=security_headers(request.scope),
+    )
 
 
 def require_pool(request: Request) -> asyncpg.Pool:

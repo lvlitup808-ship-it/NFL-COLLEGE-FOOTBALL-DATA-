@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -55,7 +58,7 @@ jobs:
       - name: Compile Python entrypoints
         run: >-
           python -m py_compile
-          app/main.py app/pilot.py app/wedge.py app/wedge_extra.py app/ingest/nflverse.py app/ingest/cfbd.py
+          app/main.py app/pilot.py app/security.py app/wedge.py app/wedge_extra.py app/ingest/nflverse.py app/ingest/cfbd.py
           scripts/seed.py scripts/migrate.py scripts/provision_pilot_user.py scripts/ingest_nflverse.py
           scripts/ingest_cfbd.py scripts/benchmark.py scripts/data_quality.py scripts/measure_pilot.py
       - name: Run API and adapter tests
@@ -78,10 +81,11 @@ jobs:
           echo "$second"
           echo "$second" | grep -q '"rows_inserted":0'
           echo "$second" | grep -q '"rows_updated":3'
-      - name: Verify hub tenancy and two-GA integration
+      - name: Verify hub tenancy, authorization, and frozen-week integration
         env:
           HUB_DB_TEST: '1'
-        run: python -m pytest -q tests/test_hub_clip_ids.py
+          HARDENING_DB_TEST: '1'
+        run: python -m pytest -q tests/test_hub_clip_ids.py tests/test_security_db.py
       - name: Verify PBP cannot populate trusted film fields
         run: |
           python - <<'PY'
@@ -112,6 +116,23 @@ jobs:
         run: python scripts/data_quality.py
       - name: Run V1 query benchmark gate
         run: python scripts/benchmark.py --iterations 3 --warmup 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser test tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/fieldmind-browser" --no-audit --no-fund playwright@1.62.1
+          "$RUNNER_TEMP/fieldmind-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify pilot browser behavior and CSP
+        run: |
+          python -m uvicorn app.pilot:app --host 127.0.0.1 --port 8765 > "$RUNNER_TEMP/pilot-browser.log" 2>&1 &
+          pilot_pid=$!
+          trap 'kill "$pilot_pid" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8765/health >/dev/null; then break; fi
+            sleep 1
+          done
+          NODE_PATH="$RUNNER_TEMP/fieldmind-browser/node_modules" node tests/browser_security.cjs
       - name: Build production Docker image
         run: docker build -t fieldmind-ci .
       - name: Smoke production container
