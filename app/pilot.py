@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from app.main import app
 from app.wedge import router as wedge_router
 from app.wedge_extra import router as wedge_extra_router
+from app.scenario_store import router as scenario_router
 
 # The 90-day pilot must not expose the legacy global read paths, cognition score
 # surface, QB translation heuristic, or unauthenticated clip write path.
@@ -30,6 +31,7 @@ app.router.routes = [
 
 app.include_router(wedge_router)
 app.include_router(wedge_extra_router)
+app.include_router(scenario_router)
 
 WEB_INDEX = Path(__file__).with_name("web") / "index.html"
 
